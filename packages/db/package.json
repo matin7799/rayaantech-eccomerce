@@ -1,0 +1,32 @@
+{
+  "name": "@rayan-tech/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:seed": "tsx src/seed.ts",
+    "db:seed:products": "tsx seeds/import-products.ts",
+    "db:seed:stories": "tsx src/seed-stories.ts",
+    "lint": "biome check src/"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.39.0",
+    "pg": "^8.13.0",
+    "pgvector": "^0.2.0"
+  },
+  "devDependencies": {
+    "@rayan-tech/config": "workspace:*",
+    "@types/node": "^26.0.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.0"
+  }
+}

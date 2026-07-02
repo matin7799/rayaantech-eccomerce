@@ -1,0 +1,14 @@
+{
+  "extends": ["../../biome.json"],
+  "root": false,
+  "files": {
+    "includes": ["**/*.ts"]
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "noDefaultExport": "off"
+      }
+    }
+  }
+}

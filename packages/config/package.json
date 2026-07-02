@@ -1,0 +1,10 @@
+{
+  "name": "@rayan-tech/config",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./tsconfig.base": "./tsconfig.base.json",
+    "./tsconfig.react": "./tsconfig.react.json",
+    "./tsconfig.nestjs": "./tsconfig.nestjs.json"
+  }
+}

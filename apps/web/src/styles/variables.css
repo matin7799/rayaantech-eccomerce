@@ -1,0 +1,157 @@
+/* Light theme defaults (Glass + shadow tokens + shadcn primitives) */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Prefix with --sys- to prevent circular references in Tailwind v4 @theme inline mappings */
+  --sys-background: #F8FAFC;
+  --sys-surface: #FFFFFF;
+  --sys-surface-secondary: #F1F5F9;
+  --sys-surface-glass: rgba(255, 255, 255, 0.85);
+  --sys-surface-action: rgba(5, 150, 105, 0.08);
+  --sys-text-primary: #020617;
+  --sys-text-secondary: #1E293B;
+  --sys-text-muted: #475569;
+  --sys-accent: #059669;
+  --sys-accent-light: #D1FAE5;
+  --sys-border: #CBD5E1;
+  --sys-border-light: #E2E8F0;
+  --sys-glass-backdrop: rgba(255, 255, 255, 0.85);
+  --sys-glass-border: rgba(203, 213, 225, 0.6);
+  --sys-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  /* Functional */
+  --sys-success: #10B981;
+  --sys-success-light: #D1FAE5;
+  --sys-warning: #F59E0B;
+  --sys-warning-light: #FEF3C7;
+  --sys-danger: #EF4444;
+  --sys-danger-light: #FEE2E2;
+  --sys-info: #2563EB; /* B2B / partner semantic — distinct from green accent */
+
+  /* Luxury storefront semantic tokens */
+  --sys-wishlist-active: #f43f5e;
+  --sys-on-accent: var(--sys-background);
+  --sys-discount-surface: var(--sys-surface-secondary);
+  --sys-discount-text: var(--sys-text-primary);
+}
+
+.light,
+[data-theme="light"] {
+  --sys-background: #F8FAFC;
+  --sys-surface: #FFFFFF;
+  --sys-surface-secondary: #F1F5F9;
+  --sys-surface-glass: rgba(255, 255, 255, 0.85);
+  --sys-surface-action: rgba(5, 150, 105, 0.08);
+  --sys-text-primary: #020617;
+  --sys-text-secondary: #1E293B;
+  --sys-text-muted: #475569;
+  --sys-accent: #059669;
+  --sys-accent-light: #D1FAE5;
+  --sys-border: #CBD5E1;
+  --sys-border-light: #E2E8F0;
+  --sys-glass-backdrop: rgba(255, 255, 255, 0.85);
+  --sys-glass-border: rgba(203, 213, 225, 0.6);
+  --sys-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  --sys-wishlist-active: #f43f5e;
+  --sys-on-accent: var(--sys-background);
+  --sys-discount-surface: var(--sys-surface-secondary);
+  --sys-discount-text: var(--sys-text-primary);
+}
+
+/* Dark theme overrides (via class, data attribute, or media query fallback) */
+.dark,
+[data-theme="dark"] {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+
+  --sys-background: #05070F;
+  --sys-surface: #0F1420;
+  --sys-surface-secondary: #1E2640;
+  --sys-surface-glass: rgba(15, 20, 32, 0.65);
+  --sys-surface-action: rgba(52, 211, 153, 0.12);
+
+  --sys-text-primary: #FFFFFF;
+  --sys-text-secondary: #E2E8F0;
+  --sys-text-muted: #94A3B8;
+
+  --sys-accent: #34D399;
+  --sys-accent-light: #064E3B;
+
+  --sys-border: #334155;
+  --sys-border-light: #1E293B;
+
+  --sys-glass-backdrop: rgba(15, 20, 32, 0.65);
+  --sys-glass-border: rgba(51, 65, 85, 0.5);
+
+  --sys-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25);
+
+  /* Functional */
+  --sys-info: #60A5FA; /* B2B / partner semantic — distinct from green accent */
+
+  /* Luxury storefront semantic tokens */
+  --sys-wishlist-active: #f43f5e;
+  --sys-on-accent: var(--sys-background);
+  --sys-discount-surface: var(--sys-surface-secondary);
+  --sys-discount-text: var(--sys-text-primary);
+}

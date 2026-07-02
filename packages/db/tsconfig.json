@@ -1,0 +1,9 @@
+{
+  "extends": "@rayan-tech/config/tsconfig.base",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/seed"]
+}

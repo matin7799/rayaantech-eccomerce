@@ -1,0 +1,142 @@
+services:
+  rt-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rt-postgres
+    restart: always
+    env_file:
+      - .env.production
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - /var/lib/rayantech/pgdata:/var/lib/postgresql/data
+    networks:
+      - rt-network-fabric
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rt-redis:
+    image: redis:7-alpine
+    container_name: rt-redis
+    restart: always
+    env_file:
+      - .env.production
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 512mb --appendonly yes
+    volumes:
+      - /var/lib/rayantech/redisdata:/data
+    networks:
+      - rt-network-fabric
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rt-zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: rt-zookeeper
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - /var/lib/rayantech/zkdata:/var/lib/zookeeper/data
+      - /var/lib/rayantech/zklog:/var/lib/zookeeper/log
+    networks:
+      - rt-network-fabric
+
+  rt-kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: rt-kafka
+    restart: always
+    env_file:
+      - .env.production
+    depends_on:
+      - rt-zookeeper
+    ports:
+      - "127.0.0.1:9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: rt-zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://rt-kafka:29092,PLAINTEXT_HOST://127.0.0.1:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - /var/lib/rayantech/kafkadata:/var/lib/kafka/data
+    networks:
+      - rt-network-fabric
+
+  rt-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-runner
+    container_name: rt-backend
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      - PORT=3003
+      - DATABASE_URL=postgresql://postgres:postgres@rt-postgres:5432/rayaantech
+      - REDIS_HOST=rt-redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=rt-kafka:29092
+    depends_on:
+      rt-postgres:
+        condition: service_healthy
+      rt-redis:
+        condition: service_healthy
+    networks:
+      - rt-network-fabric
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3003/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  rt-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-runner
+    container_name: rt-web
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      - PORT=3000
+      - API_URL=http://rt-backend:3003
+    depends_on:
+      rt-backend:
+        condition: service_healthy
+    networks:
+      - rt-network-fabric
+
+  rt-nginx:
+    image: nginx:alpine
+    container_name: rt-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/rayantech.conf:/etc/nginx/conf.d/default.conf:ro
+      - /var/lib/rayantech/ssl:/etc/nginx/ssl:ro
+      - /var/lib/rayantech/nginx/logs:/var/log/nginx
+    depends_on:
+      - rt-web
+      - rt-backend
+    networks:
+      - rt-network-fabric
+
+networks:
+  rt-network-fabric:
+    driver: bridge

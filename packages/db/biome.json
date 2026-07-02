@@ -1,0 +1,16 @@
+{
+  "extends": ["../../biome.json"],
+  "root": false,
+  "linter": {
+    "rules": {
+      "performance": {
+        "noBarrelFile": "off",
+        "noReExportAll": "off"
+      },
+      "style": {
+        "noDefaultExport": "off",
+        "noNonNullAssertion": "off"
+      }
+    }
+  }
+}
