@@ -5,14 +5,18 @@ services:
     restart: always
     env_file:
       - .env.production
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-rayaantech}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5432:5432" # ????? ??? ???? ????? ???? ?????? ??????? ????
     volumes:
       - /var/lib/rayantech/pgdata:/var/lib/postgresql/data
     networks:
       - rt-network-fabric
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,13 +29,13 @@ services:
       - .env.production
     ports:
       - "127.0.0.1:6379:6379"
-    command: redis-server --maxmemory 512mb --appendonly yes
+    command: sh -c 'redis-server --requirepass "$${REDIS_PASSWORD:-}" --maxmemory 512mb --appendonly yes'
     volumes:
       - /var/lib/rayantech/redisdata:/data
     networks:
       - rt-network-fabric
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -96,7 +100,7 @@ services:
     networks:
       - rt-network-fabric
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3003/api/v1/health || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost:3003/api/v1/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 5

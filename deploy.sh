@@ -20,6 +20,10 @@ if [ ! -f .env.production ]; then
   exit 1
 fi
 
+# Load production env variables early so they are available for compose evaluation and migrations
+export $(grep -v '^#' .env.production | xargs)
+
+
 echo "=== 1. System Package Update ==="
 apt-get update -y && apt-get upgrade -y
 apt-get install -y curl git ufw openssl
@@ -38,9 +42,9 @@ if ! docker compose version &> /dev/null; then
 fi
 
 # === 3. Node.js & pnpm Installation (For host-level db:push) ===
-if ! command -v node &> /dev/null; then
-  echo "Installing Node.js 20..."
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+if ! command -v node &> /dev/null || [ "$(node -v | cut -d'.' -f1)" != "v22" ]; then
+  echo "Installing/Upgrading Node.js to v22..."
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
 fi
 
@@ -118,9 +122,14 @@ echo "PostgreSQL is online and healthy!"
 
 # Load production env variables for host database client execution
 echo "Running database schema migrations..."
-export $(grep -v '^#' .env.production | xargs)
-# Direct migrations push from host to local port-forwarded DB
-pnpm db:push
+# Direct migrations push from host to local port-forwarded DB (override host target)
+export DATABASE_URL=$(echo "$DATABASE_URL" | sed 's/@rt-postgres/@127.0.0.1/')
+if ! pnpm db:push; then
+  echo "Error: Database migration push failed."
+  echo "=== PostgreSQL Container Logs ==="
+  docker logs rt-postgres --tail 50
+  exit 1
+fi
 
 # === 9. Full Production Service Build & Deploy ===
 echo "Building docker images locally without utilizing stale cache layers..."
