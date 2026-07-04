@@ -14,6 +14,7 @@ import { HealthModule } from "./health";
 import { KafkaModule } from "./kafka";
 import { LoggerModule, RequestIdMiddleware } from "./logger";
 import { MediaModule } from "./media";
+import { NotificationsModule } from "./notifications";
 import { OrderModule } from "./order";
 import { PaymentModule } from "./payment";
 import { ProductModule } from "./product";
@@ -70,6 +71,7 @@ import { VoiceAiModule } from "./voice-ai";
     BlogModule,
     OrderModule,
     PaymentModule,
+    NotificationsModule,
     VoiceAiModule,
     AiModule,
     TorobModule,

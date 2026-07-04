@@ -28,17 +28,23 @@ const TOROB_COOKIE_NAME = "rt_torob_session";
 /**
  * Torob Referral Tracker Middleware.
  *
- * Captures incoming requests with `utm_source=torob` query parameter
- * and initializes a Redis session tracking slot with a strict 1200-second TTL.
+ * Initializes a Redis-backed Torob pricing session (strict 1200s TTL) ONLY for a
+ * genuine Torob referral landing — i.e. a request carrying BOTH `utm_source=torob`
+ * AND a captured `torob_clid` (the opaque click-id Torob appends to its referral
+ * links, resolved upstream by TorobClidMiddleware into `req.torobClid`).
  *
- * When a valid Torob session key exists for a browsing user:
- * - The `torob_price` field should be used for product display
- * - Frontend can render a countdown timer based on the TTL
+ * Rationale: a hand-typed `?utm_source=torob` must NOT unlock the (cheaper) Torob
+ * price tier. Requiring the click-id ties activation to an actual Torob click-
+ * through rather than a guessable marketing param. Note: the click-id is not
+ * cryptographically verifiable on browser navigation, so this raises the bar
+ * without being unforgeable — the only signed proof (X-Torob-Token) exists on
+ * Torob's server-to-server API, not on user browsing.
  *
- * The middleware attaches session metadata to the request for downstream
- * controllers to access via `req.torobSession`.
+ * When a valid Torob session already exists (signed cookie), it is honored on
+ * subsequent requests regardless of query params so pricing persists for the TTL.
  *
- * Applied globally to all routes — only activates when utm_source=torob is present.
+ * The middleware attaches session metadata to `req.torobSession` for downstream
+ * pricing resolution. Applied globally; self-activates.
  */
 @Injectable()
 export class TorobTrackerMiddleware implements NestMiddleware {
@@ -57,9 +63,14 @@ export class TorobTrackerMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const utmSource = req.query.utm_source as string | undefined;
+      const clid = this.resolveTorobClid(req);
 
-      // Only activate for Torob referral traffic
-      if (utmSource !== "torob") {
+      // Activate ONLY for a genuine referral: utm_source=torob AND a real click-id.
+      // A bare `?utm_source=torob` (hand-typed) has no clid and must not unlock the
+      // Torob price tier. An already-established session (cookie) is still honored.
+      const isGenuineReferral = utmSource === "torob" && !!clid;
+
+      if (!isGenuineReferral) {
         // Check if an existing Torob session cookie is present (signed)
         const existingSessionId = this.readSignedTorobCookie(req);
         if (existingSessionId) {
@@ -109,6 +120,20 @@ export class TorobTrackerMiddleware implements NestMiddleware {
       this.logger.warn(`Torob tracker middleware error: ${message}`);
       next();
     }
+  }
+
+  /**
+   * Resolve the Torob click-id for this request.
+   *
+   * TorobClidMiddleware runs first and attaches `req.torobClid` from either the
+   * `?torob_clid=` landing param or the signed attribution cookie. We fall back
+   * to the raw query param defensively in case middleware order changes.
+   */
+  private resolveTorobClid(req: Request): string | undefined {
+    const attached = (req as Request & { torobClid?: string }).torobClid;
+    if (typeof attached === "string" && attached.length > 0) return attached;
+    const fromQuery = req.query.torob_clid;
+    return typeof fromQuery === "string" && fromQuery.length > 0 ? fromQuery : undefined;
   }
 
   /**

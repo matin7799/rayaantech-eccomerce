@@ -68,6 +68,18 @@ export interface CatalogListItem {
   discountPercent: number | null;
   /** Which tier won — drives which badge the client renders. */
   pricingTier: "regular" | "torob" | "wholesale";
+  /**
+   * All raw stored price tiers (integer Rials), attached ONLY for staff
+   * (admin/operator) so the catalog table can show full price visibility.
+   * Omitted for regular buyers — they only ever see the resolved effective price.
+   */
+  adminPrices?: {
+    basePrice: number;
+    discountedPrice: number | null;
+    campaignPrice: number | null;
+    torobPrice: number | null;
+    wholesalePrice: number | null;
+  };
 }
 /**
  * Products tRPC router — paginated catalog with faceted filtering.
@@ -131,6 +143,13 @@ export function createProductsRouter(db: NodePgDatabase) {
 
         // Build WHERE conditions dynamically
         const conditions: string[] = ["p.is_active = true"];
+
+        // Stock filter: when the buyer opts out of out-of-stock items, actually
+        // exclude them (not just sort to the bottom). This is what makes the
+        // `showOutOfStock=false` toggle hide sold-out products.
+        if (!showOutOfStock) {
+          conditions.push("p.stock > 0");
+        }
 
         // Category filter: OR across selected categories (match primary OR secondary)
         if (resolvedCategoryIds.length > 0) {
@@ -259,6 +278,11 @@ export function createProductsRouter(db: NodePgDatabase) {
           console.log("[products.list] Total:", total, "| Page:", page);
         }
 
+        // Staff (admin/operator) get every raw price tier for full visibility.
+        const isStaff = ctx.session?.role === "admin" || ctx.session?.role === "operator";
+        const parseTier = (v: string | null): number | null =>
+          v === null || v === "" ? null : parseInt(v, 10);
+
         const items = productsResult.rows.map((row): CatalogListItem => {
           const resolved: ResolvedPrice = resolveProductPrice(row, buyer);
           return {
@@ -276,6 +300,15 @@ export function createProductsRouter(db: NodePgDatabase) {
             displayBaseline: resolved.displayBaseline,
             discountPercent: resolved.discountPercent,
             pricingTier: coerceDisplayTier(resolved.pricingTier, buyer),
+            adminPrices: isStaff
+              ? {
+                  basePrice: parseInt(row.base_price, 10),
+                  discountedPrice: parseTier(row.discounted_price),
+                  campaignPrice: parseTier(row.campaign_price),
+                  torobPrice: parseTier(row.torob_price),
+                  wholesalePrice: parseTier(row.wholesale_price),
+                }
+              : undefined,
           };
         });
 

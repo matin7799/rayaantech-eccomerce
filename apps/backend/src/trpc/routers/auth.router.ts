@@ -1,8 +1,10 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import {
+  CheckAccountSchema,
   CompleteProfileSchema,
   PartnerRegisterSchema,
+  RetailRegisterSchema,
   UserOtpDispatchSchema,
   UserOtpVerifySchema,
   UserPasswordLoginSchema,
@@ -54,6 +56,65 @@ export function createAuthRouter(
     sendOtp: publicProcedure.input(UserOtpDispatchSchema).mutation(async ({ input }) => {
       await otpService.dispatch(input.mobile);
       return { success: true, message: "کد تایید ارسال شد" };
+    }),
+
+    /**
+     * Check whether a mobile already has an account (and whether it has a password).
+     * Used by the OTP-failure fallback to decide: register (new) vs. password login.
+     * Accepts the account-enumeration tradeoff for this UX.
+     */
+    checkAccount: publicProcedure.input(CheckAccountSchema).query(async ({ input }) => {
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "سرویس در دسترس نیست" });
+      }
+      const result = await db.execute<{ password_hash: string | null }>(sql`
+        SELECT password_hash FROM users WHERE mobile = ${input.mobile} LIMIT 1
+      `);
+      const user = result.rows[0];
+      return { exists: !!user, hasPassword: !!user?.password_hash };
+    }),
+
+    /**
+     * Register a retail user WITHOUT OTP (fallback when the SMS channel is down).
+     * Creates the user with a password hash and opens a session. Rejects if the
+     * mobile is already taken (existing users should log in with password/OTP).
+     */
+    registerRetail: publicProcedure.input(RetailRegisterSchema).mutation(async ({ input, ctx }) => {
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "سرویس در دسترس نیست" });
+      }
+
+      // Reject duplicates — an existing account must authenticate, not re-register.
+      const existing = await db.execute<{ id: string }>(sql`
+          SELECT id FROM users WHERE mobile = ${input.mobile} LIMIT 1
+        `);
+      if (existing.rows[0]) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "این شماره موبایل قبلاً ثبت شده است. لطفاً با رمز عبور وارد شوید",
+        });
+      }
+
+      const passwordHash = await hashPassword(input.password);
+
+      await db.execute(sql`
+          INSERT INTO users (full_name, mobile, role, is_verified, wholesale_status, password_hash)
+          VALUES (${input.fullName}, ${input.mobile}, 'retail', false, 'none', ${passwordHash})
+        `);
+
+      // Open a session (findOrCreateUser will resolve the just-created row).
+      const session = await sessionService.createSession(input.mobile, ctx.res);
+
+      return {
+        success: true,
+        isNewUser: false,
+        user: {
+          userId: session.userId,
+          mobile: session.mobile,
+          role: session.role,
+          wholesaleStatus: session.wholesaleStatus,
+        },
+      };
     }),
 
     /**

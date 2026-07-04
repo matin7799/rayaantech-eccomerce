@@ -29,6 +29,7 @@ import { Route as ProductsSlugRouteImport } from './routes/products/$slug'
 import { Route as PaymentCallbackRouteImport } from './routes/payment/callback'
 import { Route as CheckoutPaymentRouteImport } from './routes/checkout/payment'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
+import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthPartnerRegisterRouteImport } from './routes/auth/partner-register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
@@ -36,6 +37,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminTorobRouteImport } from './routes/admin/torob'
 import { Route as AdminTokensRouteImport } from './routes/admin/tokens'
 import { Route as AdminStorageRouteImport } from './routes/admin/storage'
+import { Route as AdminShippingRouteImport } from './routes/admin/shipping'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminLogsRouteImport } from './routes/admin/logs'
@@ -43,6 +45,7 @@ import { Route as AdminInstallmentsRouteImport } from './routes/admin/installmen
 import { Route as AdminContentRouteImport } from './routes/admin/content'
 import { Route as AdminAiDiagnosticsRouteImport } from './routes/admin/ai-diagnostics'
 import { Route as AdminAiConfigRouteImport } from './routes/admin/ai-config'
+import { Route as AdminAiRouteImport } from './routes/admin/ai'
 import { Route as PartnerPartnerPurchasesRouteImport } from './routes/_partner/partner/purchases'
 import { Route as PartnerPartnerProductsRouteImport } from './routes/_partner/partner/products'
 import { Route as PartnerPartnerDashboardRouteImport } from './routes/_partner/partner/dashboard'
@@ -146,6 +149,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
 const AuthPartnerRegisterRoute = AuthPartnerRegisterRouteImport.update({
   id: '/partner-register',
   path: '/partner-register',
@@ -179,6 +187,11 @@ const AdminTokensRoute = AdminTokensRouteImport.update({
 const AdminStorageRoute = AdminStorageRouteImport.update({
   id: '/storage',
   path: '/storage',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminShippingRoute = AdminShippingRouteImport.update({
+  id: '/shipping',
+  path: '/shipping',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminProductsRoute = AdminProductsRouteImport.update({
@@ -216,6 +229,11 @@ const AdminAiConfigRoute = AdminAiConfigRouteImport.update({
   path: '/ai-config',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAiRoute = AdminAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const PartnerPartnerPurchasesRoute = PartnerPartnerPurchasesRouteImport.update({
   id: '/partner/purchases',
   path: '/partner/purchases',
@@ -244,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/installments': typeof InstallmentsRoute
   '/login': typeof LoginRoute
   '/social-info': typeof SocialInfoRoute
+  '/admin/ai': typeof AdminAiRoute
   '/admin/ai-config': typeof AdminAiConfigRoute
   '/admin/ai-diagnostics': typeof AdminAiDiagnosticsRoute
   '/admin/content': typeof AdminContentRoute
@@ -251,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/shipping': typeof AdminShippingRoute
   '/admin/storage': typeof AdminStorageRoute
   '/admin/tokens': typeof AdminTokensRoute
   '/admin/torob': typeof AdminTorobRoute
@@ -258,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/partner-register': typeof AuthPartnerRegisterRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/payment': typeof CheckoutPaymentRoute
   '/payment/callback': typeof PaymentCallbackRoute
@@ -280,6 +301,7 @@ export interface FileRoutesByTo {
   '/installments': typeof InstallmentsRoute
   '/login': typeof LoginRoute
   '/social-info': typeof SocialInfoRoute
+  '/admin/ai': typeof AdminAiRoute
   '/admin/ai-config': typeof AdminAiConfigRoute
   '/admin/ai-diagnostics': typeof AdminAiDiagnosticsRoute
   '/admin/content': typeof AdminContentRoute
@@ -287,6 +309,7 @@ export interface FileRoutesByTo {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/shipping': typeof AdminShippingRoute
   '/admin/storage': typeof AdminStorageRoute
   '/admin/tokens': typeof AdminTokensRoute
   '/admin/torob': typeof AdminTorobRoute
@@ -294,6 +317,7 @@ export interface FileRoutesByTo {
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/partner-register': typeof AuthPartnerRegisterRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/payment': typeof CheckoutPaymentRoute
   '/payment/callback': typeof PaymentCallbackRoute
@@ -320,6 +344,7 @@ export interface FileRoutesById {
   '/installments': typeof InstallmentsRoute
   '/login': typeof LoginRoute
   '/social-info': typeof SocialInfoRoute
+  '/admin/ai': typeof AdminAiRoute
   '/admin/ai-config': typeof AdminAiConfigRoute
   '/admin/ai-diagnostics': typeof AdminAiDiagnosticsRoute
   '/admin/content': typeof AdminContentRoute
@@ -327,6 +352,7 @@ export interface FileRoutesById {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/shipping': typeof AdminShippingRoute
   '/admin/storage': typeof AdminStorageRoute
   '/admin/tokens': typeof AdminTokensRoute
   '/admin/torob': typeof AdminTorobRoute
@@ -334,6 +360,7 @@ export interface FileRoutesById {
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/partner-register': typeof AuthPartnerRegisterRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/payment': typeof CheckoutPaymentRoute
   '/payment/callback': typeof PaymentCallbackRoute
@@ -360,6 +387,7 @@ export interface FileRouteTypes {
     | '/installments'
     | '/login'
     | '/social-info'
+    | '/admin/ai'
     | '/admin/ai-config'
     | '/admin/ai-diagnostics'
     | '/admin/content'
@@ -367,6 +395,7 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/shipping'
     | '/admin/storage'
     | '/admin/tokens'
     | '/admin/torob'
@@ -374,6 +403,7 @@ export interface FileRouteTypes {
     | '/auth/complete-profile'
     | '/auth/login'
     | '/auth/partner-register'
+    | '/auth/register'
     | '/blog/$slug'
     | '/checkout/payment'
     | '/payment/callback'
@@ -396,6 +426,7 @@ export interface FileRouteTypes {
     | '/installments'
     | '/login'
     | '/social-info'
+    | '/admin/ai'
     | '/admin/ai-config'
     | '/admin/ai-diagnostics'
     | '/admin/content'
@@ -403,6 +434,7 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/shipping'
     | '/admin/storage'
     | '/admin/tokens'
     | '/admin/torob'
@@ -410,6 +442,7 @@ export interface FileRouteTypes {
     | '/auth/complete-profile'
     | '/auth/login'
     | '/auth/partner-register'
+    | '/auth/register'
     | '/blog/$slug'
     | '/checkout/payment'
     | '/payment/callback'
@@ -435,6 +468,7 @@ export interface FileRouteTypes {
     | '/installments'
     | '/login'
     | '/social-info'
+    | '/admin/ai'
     | '/admin/ai-config'
     | '/admin/ai-diagnostics'
     | '/admin/content'
@@ -442,6 +476,7 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/shipping'
     | '/admin/storage'
     | '/admin/tokens'
     | '/admin/torob'
@@ -449,6 +484,7 @@ export interface FileRouteTypes {
     | '/auth/complete-profile'
     | '/auth/login'
     | '/auth/partner-register'
+    | '/auth/register'
     | '/blog/$slug'
     | '/checkout/payment'
     | '/payment/callback'
@@ -624,6 +660,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/register': {
+      id: '/auth/register'
+      path: '/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
     '/auth/partner-register': {
       id: '/auth/partner-register'
       path: '/partner-register'
@@ -671,6 +714,13 @@ declare module '@tanstack/react-router' {
       path: '/storage'
       fullPath: '/admin/storage'
       preLoaderRoute: typeof AdminStorageRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/shipping': {
+      id: '/admin/shipping'
+      path: '/shipping'
+      fullPath: '/admin/shipping'
+      preLoaderRoute: typeof AdminShippingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/products': {
@@ -722,6 +772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAiConfigRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/ai': {
+      id: '/admin/ai'
+      path: '/ai'
+      fullPath: '/admin/ai'
+      preLoaderRoute: typeof AdminAiRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/_partner/partner/purchases': {
       id: '/_partner/partner/purchases'
       path: '/partner/purchases'
@@ -747,6 +804,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteRouteChildren {
+  AdminAiRoute: typeof AdminAiRoute
   AdminAiConfigRoute: typeof AdminAiConfigRoute
   AdminAiDiagnosticsRoute: typeof AdminAiDiagnosticsRoute
   AdminContentRoute: typeof AdminContentRoute
@@ -754,6 +812,7 @@ interface AdminRouteRouteChildren {
   AdminLogsRoute: typeof AdminLogsRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
+  AdminShippingRoute: typeof AdminShippingRoute
   AdminStorageRoute: typeof AdminStorageRoute
   AdminTokensRoute: typeof AdminTokensRoute
   AdminTorobRoute: typeof AdminTorobRoute
@@ -762,6 +821,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAiRoute: AdminAiRoute,
   AdminAiConfigRoute: AdminAiConfigRoute,
   AdminAiDiagnosticsRoute: AdminAiDiagnosticsRoute,
   AdminContentRoute: AdminContentRoute,
@@ -769,6 +829,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminLogsRoute: AdminLogsRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
+  AdminShippingRoute: AdminShippingRoute,
   AdminStorageRoute: AdminStorageRoute,
   AdminTokensRoute: AdminTokensRoute,
   AdminTorobRoute: AdminTorobRoute,
@@ -784,12 +845,14 @@ interface AuthRouteRouteChildren {
   AuthCompleteProfileRoute: typeof AuthCompleteProfileRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthPartnerRegisterRoute: typeof AuthPartnerRegisterRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthCompleteProfileRoute: AuthCompleteProfileRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthPartnerRegisterRoute: AuthPartnerRegisterRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(

@@ -7,11 +7,39 @@ import {
   guestBuyerContext,
   resolveProductPrice,
 } from "../../pricing/pricing.service";
-import type { ProductPriceRow, ResolvedPrice } from "../../pricing/pricing.types";
+import type { BuyerContext, ProductPriceRow, ResolvedPrice } from "../../pricing/pricing.types";
+import type { TrpcContext } from "../trpc.context";
 import { middleware, protectedProcedure, router } from "../trpc.init";
 
 /**
- * Middleware that limits procedure execution strictly to verified B2B wholesale users.
+ * Resolve the buyer context for partner-catalog pricing.
+ *
+ * Real approved partners keep their group markdown (already on ctx.buyer).
+ * Admin/operator staff have no wholesale group, so they preview as an approved
+ * partner with 0% markdown — surfacing the explicit `wholesale_price` where set,
+ * otherwise the base price. This is what lets staff see the partner price.
+ */
+function resolvePartnerBuyer(ctx: TrpcContext): BuyerContext {
+  const base = ctx.buyer ?? guestBuyerContext();
+  if (base.wholesale) return base;
+  const role = ctx.session?.role;
+  if (role === "admin" || role === "operator") {
+    return {
+      ...base,
+      wholesale: { groupId: "staff-preview", markdownPercent: "0", status: "approved" },
+    };
+  }
+  return base;
+}
+
+/**
+ * Roles allowed to reach partner procedures: verified B2B wholesale users plus
+ * admin/operator staff (so they can inspect the partner portal and its data).
+ */
+const PARTNER_ALLOWED_ROLES = new Set(["wholesale", "admin", "operator"]);
+
+/**
+ * Middleware that limits procedure execution to partner (wholesale) users and staff.
  */
 export const partnerMiddleware = middleware(({ ctx, next }) => {
   if (!ctx.session) {
@@ -20,7 +48,7 @@ export const partnerMiddleware = middleware(({ ctx, next }) => {
       message: "احراز هویت الزامی است",
     });
   }
-  if (ctx.session.role !== "wholesale") {
+  if (!PARTNER_ALLOWED_ROLES.has(ctx.session.role)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "دسترسی همکار الزامی است",
@@ -99,7 +127,7 @@ export function createPartnerRouter(db: NodePgDatabase) {
         ]);
 
         const total = parseInt(countResult.rows[0]?.total ?? "0", 10);
-        const buyer = ctx.buyer ?? guestBuyerContext();
+        const buyer = resolvePartnerBuyer(ctx);
 
         const items = productsResult.rows.map((row) => {
           const resolved: ResolvedPrice = resolveProductPrice(row, buyer);

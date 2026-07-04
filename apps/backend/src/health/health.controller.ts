@@ -12,12 +12,13 @@ import { REDIS_CLIENT } from "../redis/redis.constants";
  * Health & Readiness controller for container orchestration probes.
  *
  * Endpoints:
- * - GET /health/live  → Shallow liveness (process is running)
- * - GET /health/ready → Deep readiness (PG + Redis + Kafka broker connectivity)
+ * - GET /api/v1/health → Simple health check (for orchestrator probes)
+ * - GET /health/live    → Shallow liveness (process is running)
+ * - GET /health/ready   → Deep readiness (PG + Redis + Kafka broker connectivity)
  *
  * Both are @Public() — no API token authentication required.
  */
-@Controller("health")
+@Controller()
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);
 
@@ -31,12 +32,26 @@ export class HealthController {
   ) {}
 
   /**
+   * Simple health check — for orchestrator / load-balancer probes
+   * hitting /api/v1/health.
+   * Returns 200 if the process is alive and accepting connections.
+   */
+  @Public()
+  @Get("api/v1/health")
+  health(): { status: string; timestamp: string } {
+    return {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Liveness probe — immediate shallow check.
    * Returns 200 if the process is alive and accepting connections.
    * No external dependency checks (those are readiness).
    */
   @Public()
-  @Get("live")
+  @Get("health/live")
   live(): { status: string; timestamp: string } {
     return {
       status: "ok",
@@ -51,7 +66,7 @@ export class HealthController {
    * Returns 503 with details if any dependency fails.
    */
   @Public()
-  @Get("ready")
+  @Get("health/ready")
   async ready(): Promise<{
     status: string;
     timestamp: string;

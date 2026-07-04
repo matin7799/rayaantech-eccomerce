@@ -6,6 +6,10 @@ import { adminProcedure } from "./admin.procedure";
 
 const listSystemLogsSchema = z.object({
   level: z.enum(["info", "warn", "error", "debug"]).optional(),
+  /** Free-text search across message + context (case-insensitive) */
+  search: z.string().trim().max(200).optional(),
+  /** Exact context/source filter (e.g. "PaymentService") */
+  context: z.string().trim().max(255).optional(),
   limit: z.number().int().min(1).max(200).optional().default(50),
   offset: z.number().int().min(0).optional().default(0),
 });
@@ -40,9 +44,30 @@ export function createAdminStatsRouter(db: NodePgDatabase) {
     }),
 
     /**
-     * List system logs with optional level filter and pagination.
+     * List distinct log contexts (sources) for the filter dropdown.
+     */
+    listLogContexts: adminProcedure.query(async () => {
+      const result = await db.execute<{ context: string } & Record<string, unknown>>(
+        sql`SELECT DISTINCT context FROM system_logs ORDER BY context ASC LIMIT 200`,
+      );
+      return { contexts: result.rows.map((r) => r.context).filter(Boolean) };
+    }),
+
+    /**
+     * List system logs with optional level filter, free-text search, context
+     * filter, and pagination. Returns a total count for the current filter set.
      */
     listSystemLogs: adminProcedure.input(listSystemLogsSchema).query(async ({ input }) => {
+      const conditions = [];
+      if (input.level) conditions.push(sql`level = ${input.level}`);
+      if (input.context) conditions.push(sql`context = ${input.context}`);
+      if (input.search) {
+        const pattern = `%${input.search}%`;
+        conditions.push(sql`(message ILIKE ${pattern} OR context ILIKE ${pattern})`);
+      }
+      const whereClause =
+        conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
+
       const result = await db.execute<
         {
           id: string;
@@ -54,18 +79,19 @@ export function createAdminStatsRouter(db: NodePgDatabase) {
           created_at: string;
         } & Record<string, unknown>
       >(
-        input.level
-          ? sql`SELECT id, level, context, message, metadata, trace_id, created_at
-                  FROM system_logs
-                  WHERE level = ${input.level}
-                  ORDER BY created_at DESC
-                  LIMIT ${input.limit} OFFSET ${input.offset}`
-          : sql`SELECT id, level, context, message, metadata, trace_id, created_at
-                  FROM system_logs
-                  ORDER BY created_at DESC
-                  LIMIT ${input.limit} OFFSET ${input.offset}`,
+        sql`SELECT id, level, context, message, metadata, trace_id, created_at
+              FROM system_logs
+              ${whereClause}
+              ORDER BY created_at DESC
+              LIMIT ${input.limit} OFFSET ${input.offset}`,
       );
+
+      const countResult = await db.execute<{ count: string } & Record<string, unknown>>(
+        sql`SELECT COUNT(*)::text AS count FROM system_logs ${whereClause}`,
+      );
+
       return {
+        total: Number(countResult.rows[0]?.count ?? 0),
         logs: result.rows.map((r) => ({
           id: r.id,
           level: r.level,

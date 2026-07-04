@@ -78,14 +78,16 @@ export function ShippingSelector({ selectedId, onSelect }: Props) {
               )}
             </div>
 
-            {/* Cost */}
+            {/* Cost — cargo-collect ("پس کرایه") takes priority: these methods have
+                baseCost 0 (paid to the courier on delivery), so they must NOT be
+                rendered as "رایگان". */}
             <span
-              className={`shrink-0 text-xs font-semibold ${isFree ? "text-success" : method.isCargoCollect ? "text-warning" : "text-text-secondary"}`}
+              className={`shrink-0 text-xs font-semibold ${method.isCargoCollect ? "text-warning" : isFree ? "text-success" : "text-text-secondary"}`}
             >
-              {isFree
-                ? "رایگان"
-                : method.isCargoCollect
-                  ? "پس کرایه"
+              {method.isCargoCollect
+                ? "پس کرایه"
+                : isFree
+                  ? "رایگان"
                   : `${formatTomansPersian(method.baseCost)} ت`}
             </span>
 

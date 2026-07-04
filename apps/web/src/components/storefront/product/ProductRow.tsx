@@ -5,7 +5,13 @@ import { Eye, ShoppingBag } from "lucide-react";
 import { useCartStore } from "../../../lib/store";
 import { cn } from "../../../lib/utils";
 import { ProductTableImage } from "./ProductTableImage";
-import { DesktopPriceRow, GRADE_LABELS, MobilePriceStack, type ProductCardData } from "./shared";
+import {
+  AdminPriceMatrix,
+  DesktopPriceRow,
+  GRADE_LABELS,
+  MobilePriceStack,
+  type ProductCardData,
+} from "./shared";
 
 interface ProductRowProps {
   product: ProductCardData;
@@ -192,6 +198,9 @@ export function ProductRow({ product, delay, onQuickView }: ProductRowProps) {
           </div>
         </div>
       </div>
+
+      {/* ─── ADMIN-ONLY: all raw price tiers (present only for staff) ─── */}
+      {product.adminPrices && <AdminPriceMatrix prices={product.adminPrices} />}
     </motion.div>
   );
 }

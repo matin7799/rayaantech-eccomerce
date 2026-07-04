@@ -18,8 +18,8 @@ function getBaseUrl(): string {
     // SSR — use absolute URL
     return process.env.API_URL ?? "http://localhost:3003";
   }
-  // Browser — use env or default to backend port
-  return (window as { __API_URL__?: string }).__API_URL__ ?? "http://localhost:3003";
+  // Browser — use env or default to relative (same-origin reverse proxy)
+  return (window as { __API_URL__?: string }).__API_URL__ ?? "";
 }
 
 /**
@@ -65,12 +65,19 @@ export function createTrpcClient() {
         headers: getSSRHeaders,
         fetch(url, options) {
           let targetUrl = typeof url === "string" ? url : url.toString();
-          if (
-            typeof window !== "undefined" &&
-            window.location.search.includes("utm_source=torob")
-          ) {
-            const separator = targetUrl.includes("?") ? "&" : "?";
-            targetUrl = `${targetUrl}${separator}utm_source=torob`;
+          // Forward the Torob referral signal to the backend. The pricing session
+          // only activates for a genuine referral (utm_source=torob AND a real
+          // torob_clid click-id), so we must forward the clid too — otherwise the
+          // legit Torob landing can never unlock the Torob price tier.
+          if (typeof window !== "undefined") {
+            const pageParams = new URLSearchParams(window.location.search);
+            if (pageParams.get("utm_source") === "torob") {
+              const forwarded = new URLSearchParams({ utm_source: "torob" });
+              const clid = pageParams.get("torob_clid");
+              if (clid) forwarded.set("torob_clid", clid);
+              const separator = targetUrl.includes("?") ? "&" : "?";
+              targetUrl = `${targetUrl}${separator}${forwarded.toString()}`;
+            }
           }
           return fetch(targetUrl, {
             ...options,

@@ -117,6 +117,7 @@ export function InventoryTab({ register, errors, watch, setValue, categories }: 
           <FieldLabel>وضعیت محصول در سایت</FieldLabel>
           <div className="flex items-center gap-3 h-8">
             <Switch
+              dir="rtl"
               checked={isActive}
               onCheckedChange={(checked) => setValue("isActive", checked, { shouldDirty: true })}
             />

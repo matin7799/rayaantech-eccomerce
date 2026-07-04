@@ -58,7 +58,10 @@ export class PaymentSmsListener {
         this.logger.log(`SMS sent to ${phone} for order ${event.orderId}`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "unknown";
-        this.logger.error(`SMS failed for ${phone}: ${msg}`);
+        // warn, not error: the payment already succeeded — this is only the
+        // best-effort admin SMS alert. In-app notifications (NotificationsModule)
+        // are the reliable admin channel; this must never look like a payment failure.
+        this.logger.warn(`Admin SMS alert failed for ${phone}: ${msg}`);
       }
     }
   }

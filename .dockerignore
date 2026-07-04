@@ -1,0 +1,38 @@
+# Dependencies (reinstalled inside the image)
+node_modules
+**/node_modules
+
+# Build output (rebuilt inside the image)
+dist
+**/dist
+build
+**/build
+.turbo
+
+# VCS & editor
+.git
+.gitignore
+.vscode
+.idea
+*.swp
+
+# Secrets — never bake into an image
+.env
+.env.*
+!.env.production.example
+
+# Local data / runtime artifacts
+data.json
+*.log
+npm-debug.log*
+coverage
+.nyc_output
+
+# Docker meta (avoids recursive context noise)
+Dockerfile
+*.dockerignore
+docker-compose*.yml
+
+# Docs & misc not needed at build time
+README.md
+docs

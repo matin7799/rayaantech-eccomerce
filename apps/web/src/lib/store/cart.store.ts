@@ -50,6 +50,46 @@ export interface CartItem {
   selectedAddons: CartAddon[];
 }
 
+/** Return `value` if it is a finite number, otherwise `fallback`. */
+function finiteOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * Normalize a persisted cart entry into a valid CartItem, or drop it.
+ *
+ * Guards against legacy/corrupt localStorage data (e.g. carts saved before
+ * `effectivePrice` existed). Items missing an unrecoverable required field are
+ * dropped; recoverable gaps (missing addons / installment baseline) are healed
+ * so a single bad entry can never crash the header-mounted CartDropdown.
+ */
+function normalizePersistedItem(raw: unknown): CartItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw as Partial<CartItem>;
+
+  if (typeof item.variantId !== "string" || item.variantId.length === 0) return null;
+  if (typeof item.effectivePrice !== "number" || !Number.isFinite(item.effectivePrice)) return null;
+
+  const installmentBasePrice = finiteOr(item.installmentBasePrice, item.effectivePrice);
+  const rawQuantity = finiteOr(item.quantity, 1);
+  const quantity = rawQuantity > 0 ? Math.floor(rawQuantity) : 1;
+
+  return {
+    variantId: item.variantId,
+    productId: item.productId ?? "",
+    categoryId: item.categoryId ?? "",
+    name: item.name ?? "",
+    slug: item.slug ?? "",
+    sku: item.sku ?? "",
+    effectivePrice: item.effectivePrice,
+    installmentBasePrice,
+    pricingTier: item.pricingTier ?? "",
+    stock: finiteOr(item.stock, quantity),
+    quantity,
+    selectedAddons: Array.isArray(item.selectedAddons) ? item.selectedAddons : [],
+  };
+}
+
 /**
  * Cart store state shape.
  */
@@ -98,12 +138,14 @@ export const useCartStore = create<CartState>()(
               });
               return state;
             }
+            toast.success("به سبد خرید اضافه شد", { description: item.name });
             return {
               items: state.items.map((i) =>
                 i.variantId === item.variantId ? { ...i, quantity: i.quantity + 1 } : i,
               ),
             };
           }
+          toast.success("به سبد خرید اضافه شد", { description: item.name });
           return { items: [...state.items, { ...item, quantity: 1 }] };
         });
       },
@@ -174,8 +216,18 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "rt-cart",
+      version: 1,
       // Only persist the items array, not derived methods
       partialize: (state) => ({ items: state.items }),
+      // Sanitize on every rehydrate: drop/heal legacy or corrupt entries so a
+      // malformed persisted item can never reach the render path.
+      merge: (persisted, current) => {
+        const rawItems = (persisted as { items?: unknown } | undefined)?.items;
+        const items = Array.isArray(rawItems)
+          ? rawItems.map(normalizePersistedItem).filter((item): item is CartItem => item !== null)
+          : [];
+        return { ...current, items };
+      },
     },
   ),
 );

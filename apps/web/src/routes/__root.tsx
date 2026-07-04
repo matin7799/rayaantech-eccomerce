@@ -38,11 +38,19 @@ export const Route = createRootRoute({
       {
         title: "رایان تک — سخت‌افزار اوپن‌باکس و استوک شرکتی",
       },
+      {
+        name: "theme-color",
+        content: "#0a0a0a",
+      },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
       },
     ],
   }),
@@ -104,7 +112,13 @@ function RootComponent() {
             </>
           )}
           <PwaInstallPrompt />
-          <Toaster position="top-center" dir="rtl" richColors closeButton />
+          <Toaster
+            position="top-center"
+            dir="rtl"
+            richColors
+            closeButton
+            toastOptions={{ className: "font-sans" }}
+          />
         </DirectionProvider>
       </QueryClientProvider>
     </trpc.Provider>

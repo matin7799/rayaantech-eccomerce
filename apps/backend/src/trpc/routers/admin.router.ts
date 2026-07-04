@@ -1,9 +1,12 @@
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { mergeRouters } from "../trpc.init";
+import { createAdminAiRouter } from "./admin/admin.ai";
 import { createAdminContentRouter } from "./admin/admin.content";
 import { createAdminInstallmentsRouter } from "./admin/admin.installments";
+import { createAdminNotificationsRouter } from "./admin/admin.notifications";
 import { createAdminOrdersRouter } from "./admin/admin.orders";
 import { createAdminProductsRouter } from "./admin/admin.products";
+import { createAdminShippingRouter } from "./admin/admin.shipping";
 import { createAdminStatsRouter } from "./admin/admin.stats";
 import { createAdminStorageRouter } from "./admin/admin.storage";
 import { createAdminTokensRouter } from "./admin/admin.tokens";
@@ -25,5 +28,8 @@ export function createAdminRouter(db: NodePgDatabase) {
     createAdminProductsRouter(db),
     createAdminInstallmentsRouter(db),
     createAdminStorageRouter(db),
+    createAdminShippingRouter(db),
+    createAdminNotificationsRouter(db),
+    createAdminAiRouter(db),
   );
 }

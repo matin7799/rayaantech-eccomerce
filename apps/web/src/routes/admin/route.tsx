@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { AdminSidebar } from "../../components/admin/AdminSidebar";
+import { AdminMobileBar, AdminSidebar } from "../../components/admin/AdminSidebar";
 import { useSession } from "../../lib/useSession";
 
 export const Route = createFileRoute("/admin")({
@@ -36,12 +36,15 @@ function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar — sticky, full height */}
+      {/* Sidebar — sticky, full height (≥ lg) */}
       <AdminSidebar />
 
       {/* Main content workspace */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1440px] p-8 gap-6">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+        {/* Mobile top bar + drawer (< lg) */}
+        <AdminMobileBar />
+
+        <div className="mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
       </main>

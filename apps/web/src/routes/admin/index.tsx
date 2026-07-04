@@ -1,11 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, type Variants } from "framer-motion";
 import {
-  ActivityIcon,
   KeyIcon,
   MicIcon,
   PackageIcon,
-  RadioIcon,
   ShoppingCartIcon,
   TrendingUpIcon,
   UsersIcon,
@@ -52,7 +50,11 @@ function AdminOverview() {
   const overviewQuery = trpc.admin.getOverviewStats.useQuery();
   const stats = overviewQuery.data;
 
-  const kpiData = [
+  // Recent system events — real logs, most recent first
+  const recentLogsQuery = trpc.admin.listSystemLogs.useQuery({ limit: 6, offset: 0 });
+  const recentLogs = recentLogsQuery.data?.logs ?? [];
+
+  const kpiData: KpiCard[] = [
     {
       id: "products",
       label: "محصولات فعال",
@@ -193,48 +195,52 @@ function AdminOverview() {
         })}
       </motion.div>
 
-      {/* Activity Timeline Placeholder */}
-      <div className="rounded-2xl border border-border bg-surface p-6">
-        <h2 className="mb-4 text-base font-semibold text-text-primary">فعالیت‌های اخیر</h2>
-        <div className="flex flex-col gap-3">
-          {RECENT_ACTIVITY.map((activity) => (
-            <div
-              key={activity.id}
-              className="flex items-center gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0"
-            >
-              <div
-                className={`h-2 w-2 shrink-0 rounded-full ${
-                  activity.type === "success"
-                    ? "bg-success"
-                    : activity.type === "warning"
-                      ? "bg-warning"
-                      : "bg-accent"
-                }`}
-              />
-              <span className="flex-1 text-sm text-text-secondary">{activity.message}</span>
-              <span className="text-xs text-text-muted">{activity.time}</span>
-            </div>
-          ))}
+      {/* Recent System Events — real logs */}
+      <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-text-primary">رویدادهای اخیر سیستم</h2>
+          <Link
+            to="/admin/logs"
+            className="text-xs font-medium text-accent no-underline hover:underline"
+          >
+            مشاهده همه
+          </Link>
         </div>
+        {recentLogsQuery.isLoading ? (
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-full" />
+            ))}
+          </div>
+        ) : recentLogs.length === 0 ? (
+          <p className="py-4 text-sm text-text-muted">رویدادی برای نمایش وجود ندارد</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {recentLogs.map((log) => (
+              <div
+                key={log.id}
+                className="flex items-center gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0"
+              >
+                <div
+                  className={`h-2 w-2 shrink-0 rounded-full ${
+                    log.level === "error"
+                      ? "bg-danger"
+                      : log.level === "warn"
+                        ? "bg-warning"
+                        : log.level === "debug"
+                          ? "bg-text-muted"
+                          : "bg-accent"
+                  }`}
+                />
+                <span className="flex-1 truncate text-sm text-text-secondary">{log.message}</span>
+                <span className="hidden shrink-0 text-xs text-text-muted sm:inline">
+                  {log.context}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-const RECENT_ACTIVITY = [
-  { id: "1", type: "success", message: "توکن API جدید ایجاد شد: «سرویس ترب»", time: "۵ دقیقه پیش" },
-  {
-    id: "2",
-    type: "info",
-    message: "محصول HP EliteBook 840 G8 به انبار اضافه شد",
-    time: "۱۲ دقیقه پیش",
-  },
-  {
-    id: "3",
-    type: "warning",
-    message: "نرخ درخواست IP 185.23.x.x به حد آستانه رسید",
-    time: "۲۵ دقیقه پیش",
-  },
-  { id: "4", type: "success", message: "کش Redis ترب با موفقیت پاکسازی شد", time: "۱ ساعت پیش" },
-  { id: "5", type: "info", message: "جلسه صوتی AI #۴۲ با موفقیت پایان یافت", time: "۲ ساعت پیش" },
-];

@@ -24,7 +24,17 @@ const productsSearchSchema = z.object({
   minPrice: z.coerce.number().int().min(0).optional(),
   maxPrice: z.coerce.number().int().min(0).optional(),
   attrs: z.string().optional(),
-  showOutOfStock: z.coerce.boolean().optional().default(false),
+  // NOTE: do NOT use z.coerce.boolean() here — it applies JS Boolean(), so the
+  // string "false" (and "False") coerces to `true`, silently inverting the filter.
+  // Parse the URL token explicitly: only truthy tokens enable out-of-stock.
+  showOutOfStock: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" ? ["true", "1", "on", "yes"].includes(v.toLowerCase()) : Boolean(v),
+      z.boolean(),
+    )
+    .optional()
+    .default(false),
   sort: z.enum(["latest", "price_asc", "price_desc"]).optional().default("latest"),
   page: z.coerce.number().int().min(1).optional().default(1),
   layout: z.enum(["grid", "table_hierarchical"]).catch("grid").optional().default("grid"),

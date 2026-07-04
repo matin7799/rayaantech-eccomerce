@@ -85,6 +85,15 @@ export function PwaInstallPrompt({ onInstallSuccess }: PwaInstallPromptProps) {
     }
   }, [profileQuery.data, hasBeenRewarded, markAsRewarded]);
 
+  // Register the service worker — Chrome requires an active controlling service
+  // worker before it will ever fire `beforeinstallprompt`.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.error("[PWA] Service worker registration failed:", err);
+    });
+  }, []);
+
   // Intercept browser installation prompt events
   useEffect(() => {
     if (typeof window === "undefined") return;

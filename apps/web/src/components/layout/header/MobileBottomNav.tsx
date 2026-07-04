@@ -111,8 +111,11 @@ export default function MobileBottomNav() {
                 transition={TAP_SPRING}
                 className="flex w-full flex-col items-center gap-1"
               >
-                {/* Icon container with pop-out animation */}
-                <AnimatePresence mode="wait">
+                {/* Icon container with pop-out animation.
+                    mode="popLayout" (not "wait"): the exiting icon is pulled out
+                    of layout immediately so the incoming icon appears at once —
+                    no ~1s blank while the spring exit settles, no layout shift. */}
+                <AnimatePresence mode="popLayout" initial={false}>
                   {active ? (
                     <motion.div
                       key={`${tab.id}-active`}

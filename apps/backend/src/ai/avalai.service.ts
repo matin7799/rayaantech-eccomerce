@@ -1,6 +1,7 @@
 import { Agent } from "node:https";
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { type AiConfig, DEFAULT_AI_CONFIG } from "@rayan-tech/types";
 import type { AiMatchedProduct, AiStreamChunk } from "@rayan-tech/types";
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -24,6 +25,10 @@ import { RejectionDetectorService } from "./rejection-detector.service";
 export class AvalAiService {
   private readonly logger = new Logger(AvalAiService.name);
   private readonly client: OpenAI;
+
+  /** Short-lived cache for admin-editable AI config (app_settings.ai_config). */
+  private aiConfigCache: { value: AiConfig; expiresAt: number } | null = null;
+  private static readonly AI_CONFIG_TTL_MS = 30_000;
 
   constructor(
     @Inject(AvalAiProductRepository)
@@ -55,6 +60,32 @@ export class AvalAiService {
   }
 
   /**
+   * Load admin-editable AI config from app_settings, merged over defaults.
+   *
+   * Cached for a few seconds to avoid a DB round-trip per request. Tolerant of a
+   * missing table/row — always resolves to a valid config via DEFAULT_AI_CONFIG.
+   */
+  private async loadAiConfig(): Promise<AiConfig> {
+    const now = Date.now();
+    if (this.aiConfigCache && this.aiConfigCache.expiresAt > now) {
+      return this.aiConfigCache.value;
+    }
+    let value: AiConfig = { ...DEFAULT_AI_CONFIG };
+    try {
+      const result = await this.db.execute<{ value: Record<string, unknown> }>(
+        sql`SELECT value FROM app_settings WHERE key = 'ai_config' LIMIT 1`,
+      );
+      if (result.rows[0]?.value) {
+        value = { ...DEFAULT_AI_CONFIG, ...result.rows[0].value };
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to load AI config, using defaults: ${(err as Error).message}`);
+    }
+    this.aiConfigCache = { value, expiresAt: now + AvalAiService.AI_CONFIG_TTL_MS };
+    return value;
+  }
+
+  /**
    * Execute the full Hybrid Dual-Query RAG streaming pipeline.
    */
   async *streamConsultation(
@@ -72,6 +103,9 @@ export class AvalAiService {
     }
 
     const normalizedQuery = normalizePersianText(lastUserMessage.content);
+
+    // 0. Load admin-editable AI config (models, sampling, persona overrides)
+    const aiConfig = await this.loadAiConfig();
 
     // 1. Fetch Live Session Memory
     let llmMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = messages;
@@ -323,7 +357,11 @@ ${liveInventoryContext}
 [GUARDRAILS]
 - You must speak in highly polite, empathetic, and warm Persian.
 - Never reveal internal margins or competitor data.
-- If product catalog context is empty, gently engage in a discovery conversation. Ask for their use case, preferred brands, or budget to guide them. Do NOT fabricate models missing from the inventory.`;
+- If product catalog context is empty, gently engage in a discovery conversation. Ask for their use case, preferred brands, or budget to guide them. Do NOT fabricate models missing from the inventory.${
+      aiConfig.extraInstructions?.trim()
+        ? `\n\n[ADMIN POLICY OVERRIDES]\n${aiConfig.extraInstructions.trim()}`
+        : ""
+    }`;
 
     const productRefs = this.productRepository.mapToProductRefs(matchedProducts);
 
@@ -372,6 +410,7 @@ ${liveInventoryContext}
       modelSelection.model,
       modelSelection.temperature,
       signal,
+      aiConfig.maxTokens,
     );
 
     for await (const chunk of stream) {
@@ -552,6 +591,7 @@ ${liveInventoryContext}
     model: string,
     temperature: number,
     signal?: AbortSignal,
+    maxTokens: number = AVALAI_MAX_TOKENS,
   ): AsyncGenerator<AiStreamChunk> {
     let fullContent = "";
     try {
@@ -560,7 +600,7 @@ ${liveInventoryContext}
           model,
           stream: true,
           temperature,
-          max_tokens: AVALAI_MAX_TOKENS,
+          max_tokens: maxTokens,
           messages: [
             { role: "system", content: systemPrompt },
             ...messages.map((m) => ({ role: m.role, content: m.content })),

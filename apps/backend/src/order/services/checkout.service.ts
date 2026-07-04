@@ -6,6 +6,7 @@ import type {
   CheckoutItemDto,
   CheckoutRequestDto,
   CheckoutResult,
+  CheckoutTorobContext,
   ResolvedLineItem,
 } from "../interfaces/checkout-dto.interface";
 import { computeEffectivePrice, toRialString, type VariantPricingRow } from "./pricing.utils";
@@ -33,8 +34,16 @@ export class CheckoutService {
 
   /**
    * Execute the full checkout pipeline atomically.
+   *
+   * @param userId   Authenticated user placing the order.
+   * @param dto      Client-submitted checkout payload (items + optional fields).
+   * @param torob    Server-resolved Torob attribution context (click id from cookie).
    */
-  async executeCheckout(userId: string, dto: CheckoutRequestDto): Promise<CheckoutResult> {
+  async executeCheckout(
+    userId: string,
+    dto: CheckoutRequestDto,
+    torob: CheckoutTorobContext = {},
+  ): Promise<CheckoutResult> {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException("Checkout requires at least one item");
     }
@@ -65,8 +74,21 @@ export class CheckoutService {
       const discountAmount = toRialString(discountAmountRials);
 
       // Create order row
+      // Optional attribution columns (torob_clid, shipping_amount, phone_number)
+      // are NULL when not provided. shipping_amount is stored in Rials (numeric 12,0).
+      const shippingAmountRials =
+        typeof dto.shippingAmount === "number" && dto.shippingAmount > 0
+          ? toRialString(dto.shippingAmount * 10)
+          : null;
+      const torobClid = torob.torobClid ?? null;
+      const phoneNumber = dto.phoneNumber ?? null;
+
       const orderResult = await tx.execute<{ id: string } & Record<string, unknown>>(sql`
-        INSERT INTO orders (user_id, status, total_amount, discount_amount, shipping_address, notes, items)
+        INSERT INTO orders (
+          user_id, status, total_amount, discount_amount,
+          shipping_address, notes, items,
+          torob_clid, shipping_amount, phone_number
+        )
         VALUES (
           ${userId}, 'pending', ${totalAmount}, ${discountAmount},
           ${dto.shippingAddress ?? null}, ${dto.notes ?? null},
@@ -78,7 +100,8 @@ export class CheckoutService {
               unitPrice: item.unitPrice,
               totalPrice: item.totalPrice,
             })),
-          )}::json
+          )}::json,
+          ${torobClid}, ${shippingAmountRials}, ${phoneNumber}
         )
         RETURNING id
       `);

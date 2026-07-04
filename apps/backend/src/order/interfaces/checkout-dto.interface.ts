@@ -20,6 +20,20 @@ export interface CheckoutRequestDto {
   shippingAddress?: string;
   /** Optional order notes */
   notes?: string;
+  /** Optional shipping cost in Toman (server may override/refuse client-supplied values) */
+  shippingAmount?: number;
+  /** Optional contact phone number for this order */
+  phoneNumber?: string;
+}
+
+/**
+ * Server-resolved Torob attribution context threaded from the request into
+ * checkout. `torobClid` comes from the `rt_torob_clid` cookie set by
+ * TorobClidMiddleware when the user landed via a Torob referral link.
+ */
+export interface CheckoutTorobContext {
+  /** Torob click id captured at landing, if the user came from Torob. */
+  torobClid?: string;
 }
 
 /**

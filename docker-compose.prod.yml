@@ -35,7 +35,7 @@ services:
     networks:
       - rt-network-fabric
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD:-}\" ping || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,6 +76,12 @@ services:
       - /var/lib/rayantech/kafkadata:/var/lib/kafka/data
     networks:
       - rt-network-fabric
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/bin/kafka-topics --bootstrap-server rt-kafka:29092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   rt-backend:
     build:
@@ -86,12 +92,6 @@ services:
     restart: always
     env_file:
       - .env.production
-    environment:
-      - PORT=3003
-      - DATABASE_URL=postgresql://postgres:postgres@rt-postgres:5432/rayaantech
-      - REDIS_HOST=rt-redis
-      - REDIS_PORT=6379
-      - KAFKA_BROKERS=rt-kafka:29092
     depends_on:
       rt-postgres:
         condition: service_healthy
@@ -100,7 +100,7 @@ services:
     networks:
       - rt-network-fabric
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:3003/api/v1/health || exit 1" ]
+      test: [ "CMD-SHELL", "wget -q -O /dev/null http://localhost:3003/api/v1/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -123,6 +123,12 @@ services:
         condition: service_healthy
     networks:
       - rt-network-fabric
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/ || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   rt-nginx:
     image: nginx:alpine

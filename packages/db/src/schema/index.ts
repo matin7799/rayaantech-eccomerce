@@ -1,5 +1,6 @@
 export * from "./ai-chat.js";
 export * from "./api-tokens.js";
+export * from "./app-settings.js";
 export * from "./attributes.js";
 export * from "./banners.js";
 export * from "./brands.js";
@@ -12,6 +13,7 @@ export * from "./installment-cheques.js";
 export * from "./installment-metadata.js";
 export * from "./installments.js";
 export * from "./media.js";
+export * from "./notifications.js";
 export * from "./orders.js";
 export * from "./product-addons.js";
 export * from "./product-reservations.js";

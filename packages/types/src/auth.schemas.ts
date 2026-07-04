@@ -41,6 +41,31 @@ export const UserPasswordLoginSchema = z.object({
 export type UserPasswordLoginInput = z.infer<typeof UserPasswordLoginSchema>;
 
 /**
+ * Schema for checking whether a mobile already has an account.
+ * Used by the OTP-failure fallback to branch the UI (register vs. password login).
+ */
+export const CheckAccountSchema = z.object({
+  mobile: z.string().regex(iranianMobileRegex, "شماره موبایل نامعتبر است"),
+});
+
+export type CheckAccountInput = z.infer<typeof CheckAccountSchema>;
+
+/**
+ * Schema for retail registration WITHOUT OTP verification.
+ *
+ * Fallback path used when the OTP SMS channel is down: a brand-new user can still
+ * create a retail account with a password. Phone uniqueness is still enforced
+ * server-side. Note: this trades phone verification for availability — deliberate.
+ */
+export const RetailRegisterSchema = z.object({
+  mobile: z.string().regex(iranianMobileRegex, "شماره موبایل نامعتبر است"),
+  fullName: z.string().min(3, "نام و نام خانوادگی الزامی است").max(100, "نام بیش از حد طولانی است"),
+  password: z.string().min(8, "رمز عبور باید حداقل ۸ کاراکتر باشد"),
+});
+
+export type RetailRegisterInput = z.infer<typeof RetailRegisterSchema>;
+
+/**
  * Schema for B2B partner (wholesale companion) registration.
  *
  * Fields:

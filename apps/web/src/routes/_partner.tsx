@@ -8,10 +8,18 @@ export const Route = createFileRoute("/_partner")({
 });
 
 /**
+ * Roles permitted inside the B2B Partner Portal.
+ *
+ * `wholesale` — verified partners (primary audience).
+ * `admin` / `operator` — staff, so they can inspect the partner experience and data.
+ */
+const PARTNER_ALLOWED_ROLES = new Set(["wholesale", "admin", "operator"]);
+
+/**
  * Pathless parent layout route for the B2B Partner Portal.
  *
- * Session guard: Redirects unauthenticated users or non-partner roles to /auth/login.
- * Route Jail: wholesale access only — any other authenticated role is refused.
+ * Session guard: Redirects unauthenticated users or non-permitted roles to /auth/login.
+ * Route Jail: wholesale partners plus admin/operator staff — any other role is refused.
  */
 function PartnerLayout() {
   const { isAuthenticated, isLoading, session } = useSession();
@@ -27,7 +35,7 @@ function PartnerLayout() {
     }
 
     // Session present but wrong role → deny access (hard redirect)
-    if (session.role !== "wholesale") {
+    if (!PARTNER_ALLOWED_ROLES.has(session.role)) {
       navigate({ to: "/auth/login", search: { from: "/partner/dashboard" } });
     }
   }, [isLoading, isAuthenticated, session, navigate]);
@@ -36,7 +44,7 @@ function PartnerLayout() {
     return <PartnerLayoutSkeleton />;
   }
 
-  if (!(isAuthenticated && session) || session.role !== "wholesale") {
+  if (!(isAuthenticated && session && PARTNER_ALLOWED_ROLES.has(session.role))) {
     return null;
   }
 

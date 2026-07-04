@@ -43,9 +43,7 @@ export function VoiceConsultant({ context }: { context: ProductContext }) {
     if (socketRef.current?.readyState === WebSocket.OPEN) return;
 
     const baseUrl =
-      typeof window !== "undefined"
-        ? ((window as { __API_URL__?: string }).__API_URL__ ?? "http://localhost:3003")
-        : "http://localhost:3003";
+      typeof window !== "undefined" ? ((window as { __API_URL__?: string }).__API_URL__ ?? "") : "";
     const wsUrl = baseUrl.replace(/^http/, "ws") + "/voice-ai";
     const ws = new WebSocket(wsUrl);
 

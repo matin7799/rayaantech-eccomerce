@@ -5,11 +5,13 @@ import {
   CalendarCheck,
   CreditCard,
   Loader2,
+  Pencil,
   ShieldCheck,
   ShoppingBag,
   Timer,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ProductEditDialog } from "../../components/admin/products/ProductEditDialog";
 import { AttributeTable } from "../../components/storefront/product/detail/AttributeTable";
 import { InstallmentComparisonDialog } from "../../components/storefront/product/detail/InstallmentComparisonDialog";
 import { MediaGallery } from "../../components/storefront/product/detail/MediaGallery";
@@ -19,6 +21,7 @@ import { useTorobCountdown } from "../../lib/hooks/use-torob-countdown";
 import { formatRialsPersian } from "../../lib/persian-numerals";
 import { useAIConsultantStore, useCartStore, useProductStore } from "../../lib/store";
 import { trpc } from "../../lib/trpc";
+import { useSession } from "../../lib/useSession";
 import { cn } from "../../lib/utils";
 
 export const Route = createFileRoute("/products/$slug")({
@@ -113,6 +116,17 @@ function ProductDetailPage() {
   const lowestMonthly = installmentData?.options?.[0]?.monthlyInstallment;
   const installmentOptions = installmentData?.options ?? [];
 
+  // ─── Staff inline edit (admin/operator only) ───
+  const { session } = useSession();
+  const isStaff = session?.role === "admin" || session?.role === "operator";
+  const [editOpen, setEditOpen] = useState(false);
+  const utils = trpc.useUtils();
+  const editProductQuery = trpc.admin.getProductForEdit.useQuery(
+    { id: product?.id ?? "" },
+    { enabled: isStaff && !!product?.id },
+  );
+  const editCategoriesQuery = trpc.admin.listCategories.useQuery(undefined, { enabled: isStaff });
+
   // بررسی هوشمند نوع کالا جهت تحویل به جدول مشخصات فنی
   const computedProductType = useMemo(() => {
     return detectProductType(product?.slug, product?.categoryId);
@@ -205,7 +219,19 @@ function ProductDetailPage() {
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-bold text-text-primary sm:text-2xl">{product.name}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-bold text-text-primary sm:text-2xl">{product.name}</h1>
+              {isStaff && (
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  ویرایش محصول
+                </button>
+              )}
+            </div>
             {product.description && (
               <p className="text-sm leading-relaxed text-text-secondary line-clamp-3">
                 {product.description}
@@ -407,6 +433,20 @@ function ProductDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Staff-only inline product editor */}
+      {isStaff && (
+        <ProductEditDialog
+          product={editProductQuery.data?.product ?? null}
+          categories={editCategoriesQuery.data?.categories ?? []}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSuccess={() => {
+            utils.products.bySlug.invalidate({ slug });
+            editProductQuery.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

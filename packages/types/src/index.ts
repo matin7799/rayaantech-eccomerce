@@ -19,11 +19,25 @@ export {
   type TextQueryInput,
   textQuerySchema,
 } from "./ai.schemas.js";
+// ─── AI Config Contracts ─────────────────────────────────────────────────────
 export {
+  type AiConfig,
+  aiConfigSchema,
+  type AiConfigUpdate,
+  aiConfigUpdateSchema,
+  AVALAI_CHAT_MODELS,
+  AVALAI_EMBEDDING_MODELS,
+  DEFAULT_AI_CONFIG,
+} from "./ai-config.schemas.js";
+export {
+  type CheckAccountInput,
+  CheckAccountSchema,
   type CompleteProfileInput,
   CompleteProfileSchema,
   type PartnerRegisterInput,
   PartnerRegisterSchema,
+  type RetailRegisterInput,
+  RetailRegisterSchema,
   type UserOtpDispatchInput,
   UserOtpDispatchSchema,
   type UserOtpVerifyInput,

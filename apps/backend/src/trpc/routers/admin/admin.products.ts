@@ -107,6 +107,80 @@ export function createAdminProductsRouter(db: NodePgDatabase) {
       };
     }),
 
+    /**
+     * Fetch a single product's full editable row by id.
+     * Powers the inline edit dialog on the storefront PDP (staff-only), so we
+     * don't have to pull the entire catalog just to edit one product.
+     */
+    getProductForEdit: adminProcedure
+      .input(z.object({ id: z.string().uuid() }))
+      .query(async ({ input }) => {
+        const result = await db.execute<
+          {
+            id: string;
+            name: string;
+            slug: string;
+            sku: string | null;
+            grade: string;
+            base_price: string;
+            wholesale_price: string | null;
+            discounted_price: string | null;
+            torob_price: string | null;
+            stock: number;
+            is_active: boolean;
+            primary_category_id: string | null;
+            thumbnail_url: string | null;
+            description: string | null;
+            short_description: string | null;
+            created_at: string;
+            updated_at: string;
+          } & Record<string, unknown>
+        >(sql`
+          SELECT p.id, p.name, p.slug, p.sku, p.grade, p.base_price, p.wholesale_price,
+                 p.discounted_price, p.torob_price, p.stock, p.is_active, p.primary_category_id,
+                 p.description, p.short_description,
+                 (SELECT m.url FROM product_media pm
+                  INNER JOIN media m ON m.id = pm.media_id
+                  WHERE pm.product_id = p.id
+                  ORDER BY pm.is_thumbnail DESC, pm.display_order ASC LIMIT 1) AS thumbnail_url,
+                 p.created_at, p.updated_at
+          FROM products p WHERE p.id = ${input.id} LIMIT 1
+        `);
+
+        const r = result.rows[0];
+        if (!r) return { product: null };
+
+        const attrsResult = await db.execute<{ value_id: string } & Record<string, unknown>>(sql`
+          SELECT DISTINCT vav.value_id
+          FROM variant_attribute_values vav
+          INNER JOIN product_variants pv ON pv.id = vav.variant_id
+          WHERE pv.product_id = ${input.id}
+        `);
+
+        return {
+          product: {
+            id: r.id,
+            name: r.name,
+            slug: r.slug,
+            sku: r.sku,
+            grade: r.grade,
+            basePrice: Number(r.base_price),
+            wholesalePrice: r.wholesale_price ? Number(r.wholesale_price) : null,
+            discountedPrice: r.discounted_price ? Number(r.discounted_price) : null,
+            torobPrice: r.torob_price ? Number(r.torob_price) : null,
+            stock: r.stock,
+            isActive: r.is_active,
+            primaryCategoryId: r.primary_category_id,
+            thumbnailUrl: r.thumbnail_url,
+            description: r.description ?? "",
+            shortDescription: r.short_description ?? "",
+            attributeValueIds: attrsResult.rows.map((a) => a.value_id),
+            createdAt: r.created_at,
+            updatedAt: r.updated_at,
+          },
+        };
+      }),
+
     /** Quick update: name, price, stock only. */
     quickUpdateProduct: adminProcedure
       .input(quickUpdateProductSchema)

@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
-import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { TRPCError } from "@trpc/server";
 import type Redis from "ioredis";
 import { KafkaProducerService } from "../../kafka/kafka-producer.service";
 import { REDIS_CLIENT } from "../../redis/redis.constants";
@@ -79,7 +80,8 @@ export class OtpService {
    * In dev/mock mode: generates code locally and logs to terminal.
    * In production: calls MelliPayamak Console OTP API.
    *
-   * @throws Error with Persian message if SMS dispatch fails (caught by tRPC layer → sonner toast)
+   * @throws TRPCError (BAD_REQUEST) with Persian message if SMS dispatch fails → surfaces as a
+   *         400 to the client (sonner toast) instead of a generic 500.
    */
   async dispatch(mobile: string): Promise<void> {
     try {
@@ -127,8 +129,13 @@ export class OtpService {
         // DLQ publish failure is non-critical — already logged above
       }
 
-      // Throw formatted error for tRPC → client sonner toast
-      throw new BadRequestException("ارسال پیامک با خطا مواجه شد. لطفاً دقایقی بعد مجدداً تلاش کنید");
+      // Throw a tRPC-native error so the transport maps it to HTTP 400 (not 500).
+      // A NestJS BadRequestException would be unrecognized by tRPC and surface as
+      // INTERNAL_SERVER_ERROR, which is what previously produced the 500 on /trpc/auth.sendOtp.
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "ارسال پیامک با خطا مواجه شد. لطفاً دقایقی بعد مجدداً تلاش کنید",
+      });
     }
   }
 
@@ -180,23 +187,27 @@ export class OtpService {
    * Verify an OTP code against the cached value.
    *
    * @returns true if the code matches
-   * @throws BadRequestException if code is invalid, expired, or attempts exhausted
+   * @throws TRPCError (BAD_REQUEST) if code is invalid, expired, or attempts exhausted
    */
   async verify(mobile: string, code: string): Promise<boolean> {
     // Check attempt lockout
     const attempts = parseInt((await this.redis.get(otpAttemptsKey(mobile))) ?? "0", 10);
 
     if (attempts >= MAX_ATTEMPTS) {
-      throw new BadRequestException(
-        "تعداد تلاش‌های مجاز به پایان رسیده است. لطفاً کد جدید دریافت کنید",
-      );
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "تعداد تلاش‌های مجاز به پایان رسیده است. لطفاً کد جدید دریافت کنید",
+      });
     }
 
     // Fetch stored code
     const storedCode = await this.redis.get(otpCodeKey(mobile));
 
     if (!storedCode) {
-      throw new BadRequestException("کد تایید منقضی شده است. لطفاً کد جدید دریافت کنید");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "کد تایید منقضی شده است. لطفاً کد جدید دریافت کنید",
+      });
     }
 
     // Constant-time comparison (prevent timing attacks on short codes)
@@ -204,7 +215,7 @@ export class OtpService {
       // Increment attempts with same TTL as the OTP code
       await this.redis.incr(otpAttemptsKey(mobile));
       await this.redis.expire(otpAttemptsKey(mobile), OTP_TTL_SECONDS);
-      throw new BadRequestException("کد تایید نادرست است");
+      throw new TRPCError({ code: "BAD_REQUEST", message: "کد تایید نادرست است" });
     }
 
     // Success — clean up Redis state

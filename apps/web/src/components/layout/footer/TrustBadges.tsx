@@ -15,19 +15,31 @@ export default function TrustBadges() {
     setMounted(true);
   }, []);
 
-  /* Inject Zarinpal trust script after mount */
+  /* Inject Zarinpal trust script after mount.
+   * Zarinpal's TrustCode script calls document.write() internally, which browsers
+   * reject once the main document has finished parsing (an async-appended <script>
+   * always runs after that point). Giving it a sandboxed iframe with its own
+   * explicitly-opened document lets document.write() succeed there instead. */
   useEffect(() => {
     if (!(mounted && zarinpalRef.current)) return;
 
-    const script = document.createElement("script");
-    script.src = "https://www.zarinpal.com/webservice/TrustCode";
-    script.type = "text/javascript";
-    script.async = true;
-    zarinpalRef.current.appendChild(script);
+    const iframe = document.createElement("iframe");
+    iframe.style.border = "none";
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.setAttribute("scrolling", "no");
+    zarinpalRef.current.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write('<script src="https://www.zarinpal.com/webservice/TrustCode"></script>');
+      iframeDoc.close();
+    }
 
     return () => {
-      if (zarinpalRef.current && script.parentNode === zarinpalRef.current) {
-        zarinpalRef.current.removeChild(script);
+      if (zarinpalRef.current && iframe.parentNode === zarinpalRef.current) {
+        zarinpalRef.current.removeChild(iframe);
       }
     };
   }, [mounted]);

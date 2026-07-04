@@ -12,7 +12,7 @@ import { useCartStore } from "../../lib/store";
 /** Backend API base URL */
 const API_BASE =
   typeof window !== "undefined"
-    ? ((window as { __API_URL__?: string }).__API_URL__ ?? "http://localhost:3003")
+    ? ((window as { __API_URL__?: string }).__API_URL__ ?? "")
     : (process.env.API_URL ?? "http://localhost:3003");
 
 /**

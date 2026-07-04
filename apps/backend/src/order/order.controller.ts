@@ -2,7 +2,12 @@ import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Req } from "@nest
 import type { Request } from "express";
 import { Scopes } from "../auth/decorators/scopes.decorator";
 import type { CachedTokenRecord } from "../auth/interfaces/token-record.interface";
-import type { CheckoutRequestDto, CheckoutResult } from "./interfaces/checkout-dto.interface";
+import type { TorobClidRequest } from "../torob/torob-clid.middleware";
+import type {
+  CheckoutRequestDto,
+  CheckoutResult,
+  CheckoutTorobContext,
+} from "./interfaces/checkout-dto.interface";
 import { CheckoutService } from "./services/checkout.service";
 
 /**
@@ -38,7 +43,12 @@ export class OrderController {
     const tokenRecord = (request as Request & { tokenRecord: CachedTokenRecord }).tokenRecord;
     const userId = tokenRecord.userId;
 
-    const result = await this.checkoutService.executeCheckout(userId, body);
+    // Thread Torob attribution (captured by TorobClidMiddleware) into checkout.
+    const torob: CheckoutTorobContext = {
+      torobClid: (request as TorobClidRequest).torobClid,
+    };
+
+    const result = await this.checkoutService.executeCheckout(userId, body, torob);
     return { data: result };
   }
 }

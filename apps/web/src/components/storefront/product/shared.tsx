@@ -39,6 +39,17 @@ export interface ProductCardData {
   pricingTier: PricingTier;
   /** Whether the product is wishlisted by the current user. */
   isWishlisted?: boolean;
+  /**
+   * All raw stored price tiers (integer Rials) — present ONLY for staff
+   * (admin/operator). Drives the admin-only full-visibility strip.
+   */
+  adminPrices?: {
+    basePrice: number;
+    discountedPrice: number | null;
+    campaignPrice: number | null;
+    torobPrice: number | null;
+    wholesalePrice: number | null;
+  };
 }
 
 // ─── Shared Design Tokens ───────────────────────────────────────────────────
@@ -175,6 +186,51 @@ export function PricingTierBadge({ tier, compact }: { tier: PricingTier; compact
     >
       همکار
     </span>
+  );
+}
+
+// ─── Admin Price Matrix (staff-only full visibility) ───────────────────────
+
+/**
+ * AdminPriceMatrix — full-width strip listing every stored price tier.
+ *
+ * Rendered only when `adminPrices` is present (server attaches it exclusively
+ * for admin/operator sessions), so staff can see base/discounted/campaign/
+ * torob/wholesale prices at a glance. Missing tiers render as an em dash.
+ */
+export function AdminPriceMatrix({
+  prices,
+}: {
+  prices: NonNullable<ProductCardData["adminPrices"]>;
+}) {
+  const tiers: { label: string; value: number | null }[] = [
+    { label: "پایه", value: prices.basePrice },
+    { label: "تخفیف‌خورده", value: prices.discountedPrice },
+    { label: "کمپین", value: prices.campaignPrice },
+    { label: "ترب", value: prices.torobPrice },
+    { label: "همکار", value: prices.wholesalePrice },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-t border-dashed border-[--glass-border]/40 bg-surface/20 px-4 py-2">
+      <span className="text-[9px] font-bold text-accent">قیمت‌ها (مدیر):</span>
+      {tiers.map((t) => (
+        <span
+          key={t.label}
+          className={cn(
+            "rounded-md border px-1.5 py-0.5 text-[9px] font-medium",
+            t.value === null
+              ? "border-[--glass-border]/40 text-text-muted/50"
+              : "border-[--glass-border] text-text-secondary",
+          )}
+        >
+          {t.label}:{" "}
+          <span className="font-bold text-text-primary">
+            {t.value === null ? "—" : formatRialsPersian(t.value)}
+          </span>
+        </span>
+      ))}
+    </div>
   );
 }
 

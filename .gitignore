@@ -37,3 +37,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
+
+.kiro/
+.agents/
+docs/
+context/

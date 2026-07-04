@@ -102,8 +102,10 @@ export default function ThemeToggle() {
       {/* SSR skeleton — dimensionally correct empty slot */}
       {!mounted && <span className="flex h-4 w-4 items-center justify-center" aria-hidden="true" />}
 
-      {/* Client-side hydrated icon with spring entry animation */}
-      <AnimatePresence mode="wait">
+      {/* Client-side hydrated icon with spring entry animation.
+          No mode="wait": the incoming icon cross-fades in while the outgoing
+          one exits, so the button is never left empty mid-transition. */}
+      <AnimatePresence initial={false}>
         {mounted && (
           <motion.span
             key={mode}

@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import MethodSelectStep from "../../components/auth/MethodSelectStep";
+import OtpFailedStep from "../../components/auth/OtpFailedStep";
 import OtpVerifyInput from "../../components/auth/OtpVerifyInput";
 import PasswordStepForm from "../../components/auth/PasswordStepForm";
 import PhoneStepForm from "../../components/auth/PhoneStepForm";
@@ -19,7 +20,12 @@ export const Route = createFileRoute("/auth/login")({
   validateSearch: searchSchema,
 });
 
-type AuthStep = "phone" | "method" | "otp" | "password";
+type AuthStep = "phone" | "method" | "otp" | "password" | "otp-failed";
+
+interface AccountState {
+  exists: boolean;
+  hasPassword: boolean;
+}
 
 const STEP_SPRING = { type: "spring" as const, stiffness: 300, damping: 25 };
 
@@ -35,6 +41,7 @@ const STEP_SPRING = { type: "spring" as const, stiffness: 300, damping: 25 };
 function LoginPage() {
   const [step, setStep] = useState<AuthStep>("phone");
   const [phone, setPhone] = useState("");
+  const [account, setAccount] = useState<AccountState>({ exists: false, hasPassword: false });
   const navigate = useNavigate();
   const router = useRouter();
   const { from } = useSearch({ from: "/auth/login" });
@@ -83,21 +90,34 @@ function LoginPage() {
     setStep("method");
   }, []);
 
+  /* Attempt to send the OTP; on failure branch to the fallback step. */
+  const attemptSendOtp = useCallback(async () => {
+    try {
+      await sendOtpMutation.mutateAsync({ mobile: phone });
+      setStep("otp");
+    } catch {
+      // SMS channel is down — figure out whether this is a new or existing account
+      // so the fallback can offer register-without-OTP vs. password login.
+      try {
+        const state = await utils.auth.checkAccount.fetch({ mobile: phone });
+        setAccount(state);
+      } catch {
+        setAccount({ exists: false, hasPassword: false });
+      }
+      setStep("otp-failed");
+    }
+  }, [phone, sendOtpMutation, utils]);
+
   /* Step 2 → Step 3a or 3b */
   const handleMethodSelect = useCallback(
     async (method: "otp" | "password") => {
       if (method === "otp") {
-        try {
-          await sendOtpMutation.mutateAsync({ mobile: phone });
-          setStep("otp");
-        } catch {
-          toast.error("خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید.");
-        }
+        await attemptSendOtp();
       } else {
         setStep("password");
       }
     },
-    [phone, sendOtpMutation],
+    [attemptSendOtp],
   );
 
   /* OTP verify → check isNewUser → route accordingly */
@@ -141,6 +161,14 @@ function LoginPage() {
     },
     [phone, loginWithPasswordMutation, handleAuthSuccess],
   );
+
+  /* Fallback: send a brand-new user to register-without-OTP, preserving ?from= */
+  const goToRegister = useCallback(() => {
+    navigate({
+      to: "/auth/register",
+      search: { mobile: phone, ...(from ? { from } : {}) },
+    });
+  }, [navigate, phone, from]);
 
   /* Back handlers */
   const goToPhone = useCallback(() => setStep("phone"), []);
@@ -186,6 +214,25 @@ function LoginPage() {
               onVerify={handleOtpVerify}
               onResend={handleResendOtp}
               onBack={goToMethod}
+            />
+          </motion.div>
+        )}
+
+        {step === "otp-failed" && (
+          <motion.div
+            key="otp-failed-step"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={STEP_SPRING}
+          >
+            <OtpFailedStep
+              phone={phone}
+              account={account}
+              onUsePassword={() => setStep("password")}
+              onRegister={goToRegister}
+              onRetry={attemptSendOtp}
+              onBack={goToPhone}
             />
           </motion.div>
         )}

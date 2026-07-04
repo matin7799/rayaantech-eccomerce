@@ -15,6 +15,7 @@
     "db:seed": "tsx src/seed.ts",
     "db:seed:products": "tsx seeds/import-products.ts",
     "db:seed:stories": "tsx src/seed-stories.ts",
+    "db:create-operator": "tsx seeds/create-operator.ts",
     "lint": "biome check src/"
   },
   "dependencies": {

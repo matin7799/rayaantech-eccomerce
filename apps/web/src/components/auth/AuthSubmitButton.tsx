@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import {  ArrowRight } from "lucide-react";
 
 interface AuthSubmitButtonProps {
   isLoading: boolean;
@@ -71,7 +71,7 @@ export function AuthSubmitButton({ isLoading, label, disabled = false }: AuthSub
             className="flex items-center gap-2"
           >
             {label}
-            <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
           </motion.span>
         )}
       </AnimatePresence>
