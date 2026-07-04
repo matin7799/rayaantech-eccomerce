@@ -66,7 +66,7 @@ function renderBoldText(text: string): React.ReactNode {
     if (i % 2 === 1) {
       return (
         // biome-ignore lint/suspicious/noArrayIndexKey: parts derived from stable static split
-        <strong key={i} className="font-bold text-accent">
+        <strong key={i} className="font-bold text-amber-400">
           {part}
         </strong>
       );
@@ -225,7 +225,7 @@ function renderTokens(tokens: ParsedToken[]): React.ReactNode[] {
     nodes.push(
       <ul
         key={nextKey()}
-        className="my-2 space-y-1 rounded-xl border border-[--glass-border] bg-surface/40 p-3 backdrop-blur-md"
+        className="my-2 space-y-1 rounded-xl border border-[--glass-border] bg-surface/30 p-3 backdrop-blur-md"
       >
         {bulletBuffer.map((item, i) => (
           <li
@@ -233,7 +233,7 @@ function renderTokens(tokens: ParsedToken[]): React.ReactNode[] {
             key={i}
             className="flex items-start gap-2 text-xs leading-relaxed text-text-primary"
           >
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />
             <span>{renderBoldText(item)}</span>
           </li>
         ))}
@@ -338,7 +338,7 @@ function renderTokens(tokens: ParsedToken[]): React.ReactNode[] {
               className="my-3 flex flex-col gap-2.5 rounded-xl border border-[--glass-border] bg-surface/40 p-4 backdrop-blur-md"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-white truncate max-w-[200px]">
+                <span className="text-xs font-semibold text-white truncate max-w-50">
                   {ctaData.name}
                 </span>
                 <span className="text-[10px] text-text-muted">مشاور خرید رایان‌تک</span>
