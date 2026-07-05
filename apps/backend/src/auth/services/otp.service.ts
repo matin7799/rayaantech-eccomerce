@@ -168,9 +168,7 @@ export class OtpService {
       await this.sendViaSharedToken(mobile, code);
       return;
     }
-    throw new Error(
-      "MelliPayamak is not configured: set MELIPAYAMAK_SHARED_TOKEN",
-    );
+    throw new Error("MelliPayamak is not configured: set MELIPAYAMAK_SHARED_TOKEN");
   }
 
   /**

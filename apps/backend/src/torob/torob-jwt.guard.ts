@@ -6,7 +6,7 @@ import {
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import type { ConfigService } from "@nestjs/config";
 import type { Request } from "express";
 import { importSPKI, jwtVerify } from "jose";
 import { TOROB_PUBLIC_KEY_PEM, TOROB_TOKEN_HEADER } from "./torob.constants";

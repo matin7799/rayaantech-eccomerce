@@ -10,6 +10,7 @@ import {
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { Response } from "express";
+import { Public } from "../auth/decorators/public.decorator";
 import { DRIZZLE_CLIENT } from "../database/database.constants";
 import { TorobJwtGuard } from "./torob-jwt.guard";
 
@@ -54,7 +55,11 @@ const ACTION_TYPE_PURCHASE = "purchase";
  * Authenticated by TorobJwtGuard.
  *
  * Records are sorted ascending by timestamp (per spec §3.4).
+ *
+ * @Public() only bypasses the global ApiTokenGuard (Torob does not send an
+ * Authorization bearer token); TorobJwtGuard still authenticates via X-Torob-Token.
  */
+@Public()
 @Controller("torob/v1")
 @UseGuards(TorobJwtGuard)
 export class TorobActionsController {

@@ -76,7 +76,9 @@ export function createAdminVoiceRouter(db: NodePgDatabase) {
         return {
           id: row.id,
           // No client IP is persisted — surface the visitor identity instead.
-          ip: row.user_id ? `کاربر ${row.user_id.slice(0, 8)}` : `مهمان ${(row.guest_session_id ?? "—").slice(0, 8)}`,
+          ip: row.user_id
+            ? `کاربر ${row.user_id.slice(0, 8)}`
+            : `مهمان ${(row.guest_session_id ?? "—").slice(0, 8)}`,
           startedAt: new Date(row.created_at).toLocaleTimeString("fa-IR", {
             hour: "2-digit",
             minute: "2-digit",

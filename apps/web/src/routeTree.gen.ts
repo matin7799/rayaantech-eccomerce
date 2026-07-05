@@ -26,6 +26,7 @@ import { Route as CheckoutIndexRouteImport } from './routes/checkout/index'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ProductsSlugRouteImport } from './routes/products/$slug'
+import { Route as ProductSlugRouteImport } from './routes/product/$slug'
 import { Route as PaymentCallbackRouteImport } from './routes/payment/callback'
 import { Route as CheckoutPaymentRouteImport } from './routes/checkout/payment'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
@@ -132,6 +133,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/products/$slug',
   path: '/products/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductSlugRoute = ProductSlugRouteImport.update({
+  id: '/product/$slug',
+  path: '/product/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentCallbackRoute = PaymentCallbackRouteImport.update({
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/payment': typeof CheckoutPaymentRoute
   '/payment/callback': typeof PaymentCallbackRoute
+  '/product/$slug': typeof ProductSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/payment': typeof CheckoutPaymentRoute
   '/payment/callback': typeof PaymentCallbackRoute
+  '/product/$slug': typeof ProductSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin': typeof AdminIndexRoute
   '/blog': typeof BlogIndexRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/payment': typeof CheckoutPaymentRoute
   '/payment/callback': typeof PaymentCallbackRoute
+  '/product/$slug': typeof ProductSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
@@ -407,6 +416,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/checkout/payment'
     | '/payment/callback'
+    | '/product/$slug'
     | '/products/$slug'
     | '/admin/'
     | '/blog/'
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/checkout/payment'
     | '/payment/callback'
+    | '/product/$slug'
     | '/products/$slug'
     | '/admin'
     | '/blog'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/checkout/payment'
     | '/payment/callback'
+    | '/product/$slug'
     | '/products/$slug'
     | '/admin/'
     | '/blog/'
@@ -513,6 +525,7 @@ export interface RootRouteChildren {
   SocialInfoRoute: typeof SocialInfoRoute
   BlogSlugRoute: typeof BlogSlugRoute
   PaymentCallbackRoute: typeof PaymentCallbackRoute
+  ProductSlugRoute: typeof ProductSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   BlogIndexRoute: typeof BlogIndexRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
@@ -637,6 +650,13 @@ declare module '@tanstack/react-router' {
       path: '/products/$slug'
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product/$slug': {
+      id: '/product/$slug'
+      path: '/product/$slug'
+      fullPath: '/product/$slug'
+      preLoaderRoute: typeof ProductSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payment/callback': {
@@ -903,6 +923,7 @@ const rootRouteChildren: RootRouteChildren = {
   SocialInfoRoute: SocialInfoRoute,
   BlogSlugRoute: BlogSlugRoute,
   PaymentCallbackRoute: PaymentCallbackRoute,
+  ProductSlugRoute: ProductSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   BlogIndexRoute: BlogIndexRoute,
   ProductsIndexRoute: ProductsIndexRoute,

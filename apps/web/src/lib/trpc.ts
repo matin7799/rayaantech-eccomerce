@@ -47,6 +47,32 @@ function getSSRHeaders(): Record<string, string> {
 }
 
 /**
+ * Forward the Torob referral signal to the backend by appending it to the
+ * tRPC request URL. Torob landings carry `?utm_source=torob` and/or
+ * `?torob_clid=<id>`; either activates the Torob pricing session server-side.
+ *
+ * `torob_ref` carries the browser-recorded document.referrer as referral
+ * proof: the backend only activates Torob pricing when it points at a torob
+ * domain, so hand-typing the query params (empty/non-torob referrer) does not
+ * unlock the Torob price tier.
+ */
+function appendTorobReferralParams(targetUrl: string): string {
+  if (typeof window === "undefined") return targetUrl;
+
+  const pageParams = new URLSearchParams(window.location.search);
+  const clid = pageParams.get("torob_clid");
+  const isTorobUtm = pageParams.get("utm_source") === "torob";
+  if (!(clid || isTorobUtm)) return targetUrl;
+
+  const forwarded = new URLSearchParams();
+  if (isTorobUtm) forwarded.set("utm_source", "torob");
+  if (clid) forwarded.set("torob_clid", clid);
+  if (document.referrer) forwarded.set("torob_ref", document.referrer);
+  const separator = targetUrl.includes("?") ? "&" : "?";
+  return `${targetUrl}${separator}${forwarded.toString()}`;
+}
+
+/**
  * Create the tRPC client instance configured for the backend.
  *
  * Critical cookie handling:
@@ -64,21 +90,9 @@ export function createTrpcClient() {
         // Forward SSR cookies for server-side session resolution
         headers: getSSRHeaders,
         fetch(url, options) {
-          let targetUrl = typeof url === "string" ? url : url.toString();
-          // Forward the Torob referral signal to the backend. The pricing session
-          // only activates for a genuine referral (utm_source=torob AND a real
-          // torob_clid click-id), so we must forward the clid too — otherwise the
-          // legit Torob landing can never unlock the Torob price tier.
-          if (typeof window !== "undefined") {
-            const pageParams = new URLSearchParams(window.location.search);
-            if (pageParams.get("utm_source") === "torob") {
-              const forwarded = new URLSearchParams({ utm_source: "torob" });
-              const clid = pageParams.get("torob_clid");
-              if (clid) forwarded.set("torob_clid", clid);
-              const separator = targetUrl.includes("?") ? "&" : "?";
-              targetUrl = `${targetUrl}${separator}${forwarded.toString()}`;
-            }
-          }
+          const targetUrl = appendTorobReferralParams(
+            typeof url === "string" ? url : url.toString(),
+          );
           return fetch(targetUrl, {
             ...options,
             credentials: "include",

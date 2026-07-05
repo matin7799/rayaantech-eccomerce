@@ -14,6 +14,8 @@ import { TorobV3Controller } from "./torob-v3.controller";
  *
  * 1. Official Torob API (docs/torob/):
  *    - TorobV3Controller     → POST /torob_api/v3/products  (Product API v3)
+ *                              also aliased at POST /api/v1/torob/products
+ *                              (the URL registered in the Torob panel)
  *    - TorobOrdersController → GET  /torob/v1/orders        (Order Tracking)
  *    - TorobActionsController→ GET  /torob/v1/actions       (Action Tracking)
  *    All three are guarded by TorobJwtGuard (EdDSA JWT via X-Torob-Token).
@@ -34,11 +36,9 @@ import { TorobV3Controller } from "./torob-v3.controller";
 })
 export class TorobModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // Order matters: TorobClidMiddleware runs FIRST so it resolves `req.torobClid`
-    // (from the ?torob_clid= param or signed cookie) before TorobTrackerMiddleware,
-    // which now requires a click-id to activate the utm_source=torob pricing session.
-    // - TorobClidMiddleware:    captures torob_clid (attribution)
-    // - TorobTrackerMiddleware: activates pricing only for utm_source=torob + clid
+    // - TorobClidMiddleware:    captures torob_clid (order attribution, 7-day cookie)
+    // - TorobTrackerMiddleware: activates the Torob pricing session for landings
+    //   carrying utm_source=torob and/or torob_clid (either alone suffices)
     consumer.apply(TorobClidMiddleware, TorobTrackerMiddleware).forRoutes("*");
   }
 }

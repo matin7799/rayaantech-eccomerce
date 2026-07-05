@@ -36,7 +36,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "رایان تک — سخت‌افزار اوپن‌باکس و استوک شرکتی",
+        title: "مرجع اقساطی لپ تاپ موبایل کنسول و کالای دیجیتال - رایان تک",
       },
       {
         name: "theme-color",

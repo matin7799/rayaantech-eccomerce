@@ -137,8 +137,18 @@ async function main() {
   // ─── Build user rows ───────────────────────────────────────────────────────
   const userRows = parseDelimited(usersCsv, "\t");
   const values = userRows.map((cols) => {
-    const [id, mobile, email, passwordHash, firstName, lastName, status, role, createdAt, updatedAt] =
-      cols;
+    const [
+      id,
+      mobile,
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+      status,
+      role,
+      createdAt,
+      updatedAt,
+    ] = cols;
     const uid = clean(id);
     const fullName = [clean(firstName), clean(lastName)].filter(Boolean).join(" ") || "کاربر";
     return {
@@ -158,28 +168,28 @@ async function main() {
   const pool = new pg.Pool({ connectionString: DATABASE_URL });
   const db = drizzle(pool);
 
-let inserted = 0;
-for (const v of values) {
-  if (!v.mobile) continue;
+  let inserted = 0;
+  for (const v of values) {
+    if (!v.mobile) continue;
 
-  await db
-    .insert(users)
-    .values(v)
-    .onConflictDoUpdate({
-      target: users.mobile,
-      set: {
-        fullName: v.fullName,
-        email: v.email,
-        passwordHash: v.passwordHash,
-        isVerified: v.isVerified,
-        role: v.role,
-        addresses: v.addresses,
-        updatedAt: v.updatedAt,
-      },
-    });
+    await db
+      .insert(users)
+      .values(v)
+      .onConflictDoUpdate({
+        target: users.mobile,
+        set: {
+          fullName: v.fullName,
+          email: v.email,
+          passwordHash: v.passwordHash,
+          isVerified: v.isVerified,
+          role: v.role,
+          addresses: v.addresses,
+          updatedAt: v.updatedAt,
+        },
+      });
 
-  inserted++;
-}
+    inserted++;
+  }
 
   console.log(`  ✓ Users upserted: ${inserted}`);
   console.log("\n✅ User seed complete!");

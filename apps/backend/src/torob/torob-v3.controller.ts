@@ -8,10 +8,11 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import type { ConfigService } from "@nestjs/config";
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { Response } from "express";
+import { Public } from "../auth/decorators/public.decorator";
 import { DRIZZLE_CLIENT } from "../database/database.constants";
 import { TOROB_API_VERSION, TOROB_PRODUCTS_PER_PAGE } from "./torob.constants";
 import { TorobJwtGuard } from "./torob-jwt.guard";
@@ -71,6 +72,8 @@ interface TorobFeedResponse {
 
 const SORT_OPTIONS = new Set(["date_added_desc", "date_updated_desc"]);
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Torob Product API v3 controller.
  *
@@ -80,7 +83,15 @@ const SORT_OPTIONS = new Set(["date_added_desc", "date_updated_desc"]);
  *
  * Prices are stored in Rials; the Torob spec requires integer Toman — divide by 10.
  */
-@Controller("torob_api/v3")
+// "api/v1/torob" is an alias: the URL registered in the Torob panel points there,
+// so POST /api/v1/torob/products must resolve to this same spec-compliant handler.
+// (GET /api/v1/torob/products stays on TorobController — methods don't collide.)
+//
+// @Public() only bypasses the global ApiTokenGuard (Torob does not send an
+// Authorization bearer token); authentication is enforced by TorobJwtGuard
+// via the X-Torob-Token header.
+@Public()
+@Controller(["torob_api/v3", "api/v1/torob"])
 @UseGuards(TorobJwtGuard)
 export class TorobV3Controller {
   private readonly frontendUrl: string;
@@ -138,7 +149,10 @@ export class TorobV3Controller {
       if (body.page_uniques.some((u) => typeof u !== "string" || u.length === 0)) {
         this.throwSpecError(res, "page_uniques contains invalid entries");
       }
-      productIds = body.page_uniques;
+      // page_unique is our product UUID. Drop anything that isn't one (e.g. ids
+      // Torob retained from an older feed) — per spec §4.4 unknown products get
+      // an empty result, and a non-UUID value would make the uuid comparison throw.
+      productIds = body.page_uniques.filter((u) => UUID_PATTERN.test(u));
     } else if (body.page_urls && body.page_urls.length > 0) {
       // page_unique IS the product id; page_url is the storefront URL containing
       // the slug. Extract the product id by matching the URL to known products.
@@ -151,7 +165,7 @@ export class TorobV3Controller {
       }
 
       const idRows = await this.db.execute<{ id: string } & Record<string, unknown>>(sql`
-        SELECT id FROM products WHERE slug = ANY(${slugs}::text[]) AND is_active = true
+        SELECT id FROM products WHERE slug IN ${slugs} AND is_active = true
       `);
       productIds = idRows.rows.map((r) => r.id);
     }
@@ -234,7 +248,7 @@ export class TorobV3Controller {
         p.created_at, p.updated_at
       FROM products p
       LEFT JOIN categories c ON c.id = p.primary_category_id
-      WHERE p.id = ANY(${ids}::uuid[]) AND p.is_active = true
+      WHERE p.id IN ${ids} AND p.is_active = true
     `);
     return this.buildProductResponses(rows.rows);
   }
@@ -256,7 +270,7 @@ export class TorobV3Controller {
 
       return {
         page_unique: row.id,
-        page_url: `${this.frontendUrl}/product/${row.slug}`,
+        page_url: `${this.frontendUrl}/products/${row.slug}`,
         product_group_id: null,
         title: row.name,
         subtitle: null,
@@ -284,7 +298,7 @@ export class TorobV3Controller {
       SELECT pm.product_id, m.url
       FROM product_media pm
       JOIN media m ON m.id = pm.media_id
-      WHERE pm.product_id = ANY(${productIds}::uuid[])
+      WHERE pm.product_id IN ${productIds}
       ORDER BY pm.product_id, pm.is_thumbnail DESC, pm.display_order ASC
     `);
 
@@ -317,7 +331,7 @@ export class TorobV3Controller {
       JOIN variant_attribute_values vav ON vav.variant_id = pv.id
       JOIN attribute_values av ON av.id = vav.value_id
       JOIN attribute_keys ak ON ak.id = av.key_id
-      WHERE pv.product_id = ANY(${productIds}::uuid[])
+      WHERE pv.product_id IN ${productIds}
     `);
 
     const map = new Map<string, Record<string, string>>();
@@ -339,13 +353,15 @@ export class TorobV3Controller {
 
   /**
    * Extract the product slug from a storefront URL.
-   * Expected URL shape: https://raynew.ir/product/<slug> or .../product/<slug>/...
+   * Expected URL shape: https://raynew.ir/products/<slug> (canonical) or the
+   * legacy .../product/<slug> form still stored on Torob's side.
    */
   private extractSlugFromUrl(url: string): string | null {
     try {
       const u = new URL(url);
       const segments = u.pathname.split("/").filter(Boolean);
-      const productIndex = segments.indexOf("product");
+      let productIndex = segments.indexOf("products");
+      if (productIndex === -1) productIndex = segments.indexOf("product");
       if (productIndex === -1 || productIndex + 1 >= segments.length) return null;
       return decodeURIComponent(segments[productIndex + 1]);
     } catch {

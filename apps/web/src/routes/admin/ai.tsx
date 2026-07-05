@@ -193,7 +193,7 @@ function SettingsForm({
             </span>
           </div>
           <Switch
-          dir="rtl"
+            dir="rtl"
             checked={enabled}
             onCheckedChange={(v) => setValue("enabled", v, { shouldDirty: true })}
           />
@@ -317,7 +317,7 @@ function SettingsForm({
               </span>
             </div>
             <Switch
-            dir="rtl"
+              dir="rtl"
               checked={overrideDailyLimit}
               onCheckedChange={(v) => setValue("overrideDailyLimit", v, { shouldDirty: true })}
             />

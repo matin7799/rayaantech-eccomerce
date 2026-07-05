@@ -7,10 +7,11 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import type { ConfigService } from "@nestjs/config";
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { Response } from "express";
+import { Public } from "../auth/decorators/public.decorator";
 import { DRIZZLE_CLIENT } from "../database/database.constants";
 import { TorobJwtGuard } from "./torob-jwt.guard";
 
@@ -71,7 +72,11 @@ const MAX_LIMIT = 1000;
  * Implements `GET /torob/v1/orders` per docs/torob/order_tracking_api.md.
  * Exposes only orders that originated from Torob (i.e. have a `torob_clid`).
  * Authenticated by TorobJwtGuard.
+ *
+ * @Public() only bypasses the global ApiTokenGuard (Torob does not send an
+ * Authorization bearer token); TorobJwtGuard still authenticates via X-Torob-Token.
  */
+@Public()
 @Controller("torob/v1")
 @UseGuards(TorobJwtGuard)
 export class TorobOrdersController {
@@ -119,14 +124,33 @@ export class TorobOrdersController {
       LIMIT ${parsedLimit}
     `);
 
-    const data: TorobOrderRecord[] = result.rows.map((row) => this.mapOrder(row));
+    const slugById = await this.loadProductSlugs(result.rows);
+    const data: TorobOrderRecord[] = result.rows.map((row) => this.mapOrder(row, slugById));
 
     return { success: true, data };
   }
 
-  private mapOrder(row: TorobOrderRow): TorobOrderRecord {
+  /**
+   * Batch-resolve product ids → slugs so product_url points at the real PDP
+   * (/products/<slug>). Items whose product no longer exists fall back to the id.
+   */
+  private async loadProductSlugs(rows: TorobOrderRow[]): Promise<Map<string, string>> {
+    const ids = [...new Set(rows.flatMap((r) => (r.items ?? []).map((i) => i.productId)))];
+    const map = new Map<string, string>();
+    if (ids.length === 0) return map;
+
+    const result = await this.db.execute<{ id: string; slug: string } & Record<string, unknown>>(
+      sql`SELECT id, slug FROM products WHERE id IN ${ids}`,
+    );
+    for (const row of result.rows) {
+      map.set(row.id, row.slug);
+    }
+    return map;
+  }
+
+  private mapOrder(row: TorobOrderRow, slugById: Map<string, string>): TorobOrderRecord {
     const products: TorobOrderProduct[] = (row.items ?? []).map((item) => ({
-      product_url: `${this.frontendUrl}/product/${item.productId}`,
+      product_url: `${this.frontendUrl}/products/${slugById.get(item.productId) ?? item.productId}`,
       product_price: this.rialToToman(Number(item.unitPrice)),
       quantity: item.quantity,
     }));

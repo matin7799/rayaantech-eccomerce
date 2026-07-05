@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import {  ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 interface AuthSubmitButtonProps {
   isLoading: boolean;

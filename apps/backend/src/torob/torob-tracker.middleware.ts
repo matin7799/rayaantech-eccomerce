@@ -28,17 +28,11 @@ const TOROB_COOKIE_NAME = "rt_torob_session";
 /**
  * Torob Referral Tracker Middleware.
  *
- * Initializes a Redis-backed Torob pricing session (strict 1200s TTL) ONLY for a
- * genuine Torob referral landing — i.e. a request carrying BOTH `utm_source=torob`
- * AND a captured `torob_clid` (the opaque click-id Torob appends to its referral
- * links, resolved upstream by TorobClidMiddleware into `req.torobClid`).
- *
- * Rationale: a hand-typed `?utm_source=torob` must NOT unlock the (cheaper) Torob
- * price tier. Requiring the click-id ties activation to an actual Torob click-
- * through rather than a guessable marketing param. Note: the click-id is not
- * cryptographically verifiable on browser navigation, so this raises the bar
- * without being unforgeable — the only signed proof (X-Torob-Token) exists on
- * Torob's server-to-server API, not on user browsing.
+ * Initializes a Redis-backed Torob pricing session (strict 1200s TTL) for a Torob
+ * referral landing — a request carrying `utm_source=torob` and/or `torob_clid=<id>`
+ * (Torob appends one or both depending on the program). Either signal alone
+ * activates the session: the Torob price is public on torob.com, so gating it
+ * harder than the marketing param would only hurt real referrals.
  *
  * When a valid Torob session already exists (signed cookie), it is honored on
  * subsequent requests regardless of query params so pricing persists for the TTL.
@@ -63,12 +57,17 @@ export class TorobTrackerMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const utmSource = req.query.utm_source as string | undefined;
-      const clid = this.resolveTorobClid(req);
+      const clidInQuery =
+        typeof req.query.torob_clid === "string" && req.query.torob_clid.length > 0;
 
-      // Activate ONLY for a genuine referral: utm_source=torob AND a real click-id.
-      // A bare `?utm_source=torob` (hand-typed) has no clid and must not unlock the
-      // Torob price tier. An already-established session (cookie) is still honored.
-      const isGenuineReferral = utmSource === "torob" && !!clid;
+      // Activate for a Torob referral: the landing carries `utm_source=torob`
+      // and/or `torob_clid=<id>` (Torob appends one or both), AND the browser's
+      // document.referrer (forwarded by the web client as `torob_ref`) points at
+      // a torob domain. Hand-typing the query params leaves an empty/non-torob
+      // referrer, so that alone no longer unlocks the Torob price tier.
+      // An already-established session (cookie) is still honored below.
+      const isGenuineReferral =
+        (clidInQuery || utmSource === "torob") && this.hasTorobReferrer(req);
 
       if (!isGenuineReferral) {
         // Check if an existing Torob session cookie is present (signed)
@@ -123,17 +122,25 @@ export class TorobTrackerMiddleware implements NestMiddleware {
   }
 
   /**
-   * Resolve the Torob click-id for this request.
+   * Verify the forwarded document.referrer points at a Torob property.
    *
-   * TorobClidMiddleware runs first and attaches `req.torobClid` from either the
-   * `?torob_clid=` landing param or the signed attribution cookie. We fall back
-   * to the raw query param defensively in case middleware order changes.
+   * The web client forwards `document.referrer` as the `torob_ref` query param.
+   * The browser sets document.referrer from the actual navigation source — it
+   * cannot be influenced by editing the URL, only by scripting the request
+   * directly (an acceptable bar: the Torob price is public on torob.com).
+   *
+   * Accepted: any *.torob.com / *.torob.ir page, and the Torob Android app
+   * (android-app://ir.torob... referrers).
    */
-  private resolveTorobClid(req: Request): string | undefined {
-    const attached = (req as Request & { torobClid?: string }).torobClid;
-    if (typeof attached === "string" && attached.length > 0) return attached;
-    const fromQuery = req.query.torob_clid;
-    return typeof fromQuery === "string" && fromQuery.length > 0 ? fromQuery : undefined;
+  private hasTorobReferrer(req: Request): boolean {
+    const ref = req.query.torob_ref;
+    if (typeof ref !== "string" || ref.length === 0) return false;
+    if (ref.startsWith("android-app://ir.torob")) return true;
+    try {
+      return /(^|\.)torob\.(com|ir)$/i.test(new URL(ref).hostname);
+    } catch {
+      return false;
+    }
   }
 
   /**

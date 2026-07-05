@@ -32,7 +32,7 @@ async function createOperator() {
   const password = process.env.OPERATOR_PASSWORD;
   const fullName = process.env.OPERATOR_NAME ?? "Operator";
 
-  if (!mobile || !/^09\d{9}$/.test(mobile)) {
+  if (!(mobile && /^09\d{9}$/.test(mobile))) {
     throw new Error("OPERATOR_MOBILE is required and must match 09xxxxxxxxx");
   }
   if (!password || password.length < 8) {

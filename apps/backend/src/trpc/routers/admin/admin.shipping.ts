@@ -67,7 +67,12 @@ function mapRow(row: ShippingMethodRow) {
  * Detect a Postgres unique-violation (duplicate `code`) and surface a friendly message.
  */
 function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && (err as { code?: string }).code === "23505";
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "23505"
+  );
 }
 
 /**

@@ -272,8 +272,12 @@ export class CheckoutService {
 
       const row = result.rows[0];
       if (!row) {
-        this.logger.warn(`Checkout rejected: variant ${item.variantId} not found or product inactive`);
-        throw new BadRequestException("یکی از محصولات سبد خرید موجود نیست یا غیرفعال شده است. لطفاً سبد خرید خود را به‌روزرسانی کنید.");
+        this.logger.warn(
+          `Checkout rejected: variant ${item.variantId} not found or product inactive`,
+        );
+        throw new BadRequestException(
+          "یکی از محصولات سبد خرید موجود نیست یا غیرفعال شده است. لطفاً سبد خرید خود را به‌روزرسانی کنید.",
+        );
       }
 
       if (row.variant_stock < item.quantity) {

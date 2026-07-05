@@ -1,8 +1,8 @@
 import { Agent } from "node:https";
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { type AiConfig, DEFAULT_AI_CONFIG } from "@rayan-tech/types";
 import type { AiMatchedProduct, AiStreamChunk } from "@rayan-tech/types";
+import { type AiConfig, DEFAULT_AI_CONFIG } from "@rayan-tech/types";
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import OpenAI from "openai";

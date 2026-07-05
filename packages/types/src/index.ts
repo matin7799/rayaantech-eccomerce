@@ -22,14 +22,13 @@ export {
 // ─── AI Config Contracts ─────────────────────────────────────────────────────
 export {
   type AiConfig,
-  aiConfigSchema,
   type AiConfigUpdate,
-  aiConfigUpdateSchema,
   AVALAI_CHAT_MODELS,
   AVALAI_EMBEDDING_MODELS,
+  aiConfigSchema,
+  aiConfigUpdateSchema,
   DEFAULT_AI_CONFIG,
 } from "./ai-config.schemas.js";
-export { type AvalAiModelEntry, AVALAI_ALL_MODELS } from "./avalai-models.generated.js";
 export {
   type CheckAccountInput,
   CheckAccountSchema,
@@ -46,6 +45,7 @@ export {
   type UserPasswordLoginInput,
   UserPasswordLoginSchema,
 } from "./auth.schemas.js";
+export { AVALAI_ALL_MODELS, type AvalAiModelEntry } from "./avalai-models.generated.js";
 
 // ─── Installment Contracts ───────────────────────────────────────────────────
 export {
