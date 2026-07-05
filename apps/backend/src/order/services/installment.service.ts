@@ -133,7 +133,10 @@ export class InstallmentService {
       FROM category_installment_overrides
       WHERE rule_id = ${ruleId}
         AND is_active = true
-        AND category_id = ANY(${categoryIds}::uuid[])
+        AND category_id IN (${sql.join(
+          categoryIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})
     `);
 
     const map = new Map<string, OverrideRow>();

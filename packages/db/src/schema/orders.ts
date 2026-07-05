@@ -38,6 +38,9 @@ export const orders = pgTable(
         }>
       >()
       .notNull(),
+    torobClid: varchar("torob_clid", { length: 64 }),
+    shippingAmount: numeric("shipping_amount", { precision: 12, scale: 0 }),
+    phoneNumber: varchar("phone_number", { length: 20 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

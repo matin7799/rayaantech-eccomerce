@@ -12,11 +12,10 @@ import { useState } from "react";
 import { trpc } from "../../../lib/trpc";
 import { cn } from "../../../lib/utils";
 
-type OrderFilter = "all" | "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+type OrderFilter = "all" | "processing" | "shipped" | "delivered" | "cancelled";
 
 const FILTER_OPTIONS: { value: OrderFilter; label: string }[] = [
   { value: "all", label: "همه" },
-  { value: "pending", label: "در انتظار" },
   { value: "processing", label: "پردازش" },
   { value: "shipped", label: "ارسال شده" },
   { value: "delivered", label: "تحویل شده" },
@@ -98,8 +97,6 @@ export function OrdersTab() {
         <h2 className="text-base font-bold text-text-primary">سفارش‌ها</h2>
         {stats && (
           <div className="flex items-center gap-3 text-[11px] font-medium text-text-muted">
-            <span>{stats.pending.toLocaleString("fa-IR")} در انتظار</span>
-            <span className="text-border">|</span>
             <span>{stats.processing.toLocaleString("fa-IR")} پردازش</span>
           </div>
         )}

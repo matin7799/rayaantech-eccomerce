@@ -46,23 +46,13 @@ export function createPaymentRouter(
           throw new TRPCError({ code: "BAD_REQUEST", message });
         }
 
-        // Step 2: Resolve variant IDs to product IDs to build basket items
-        const variantIds = input.items.map((i) => i.variantId);
-        const variantsResult = await db.execute<{ id: string; product_id: string }>(sql`
-          SELECT id, product_id FROM product_variants WHERE id = ANY(${variantIds}::uuid[])
-        `);
-
-        const variantMap = new Map(variantsResult.rows.map((v) => [v.id, v.product_id]));
-        const basketItems = input.items.map((item) => {
-          const productId = variantMap.get(item.variantId);
-          if (!productId) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "محصول نامعتبر در سبد خرید" });
-          }
-          return {
-            productId,
-            quantity: item.quantity,
-          };
-        });
+        // Step 2: Build basket items from the checkout result — it already
+        // carries server-resolved product IDs (the client may have sent
+        // product IDs in place of variant IDs; checkout resolves both).
+        const basketItems = checkoutResult.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }));
 
         // Step 3: Build callback URL
         const callbackUrl = new URL("/payment/callback", callbackBaseUrl);
@@ -148,7 +138,10 @@ export function createPaymentRouter(
           FROM products p
           LEFT JOIN brands b ON b.id = p.brand_id
           LEFT JOIN categories c ON c.id = p.primary_category_id
-          WHERE p.id = ANY(${productIds}::uuid[])
+          WHERE p.id IN (${sql.join(
+            productIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})
         `);
 
         const detailsMap = new Map(detailsResult.rows.map((r) => [r.product_id, r]));

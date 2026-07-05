@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>رایان تک — دسترسی موقتاً ممکن نیست</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 520px;
+    width: 100%;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 40px 32px;
+    text-align: center;
+  }
+  .icon { font-size: 56px; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin-bottom: 12px; color: #f8fafc; }
+  p { font-size: 15px; line-height: 2; color: #94a3b8; }
+  .steps {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+    text-align: right;
+  }
+  .steps p { margin-bottom: 8px; }
+  .steps p:last-child { margin-bottom: 0; }
+  .en {
+    direction: ltr;
+    text-align: center;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #334155;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .retry {
+    display: inline-block;
+    margin-top: 24px;
+    padding: 12px 32px;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 15px;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+  .retry:hover { background: #1d4ed8; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔌</div>
+    <h1>اتصال شما از طریق VPN برقرار است</h1>
+    <p>دسترسی به فروشگاه رایان تک با VPN یا فیلترشکن روشن امکان‌پذیر نیست.</p>
+    <div class="steps">
+      <p>۱. VPN یا فیلترشکن خود را خاموش کنید</p>
+      <p>۲. صفحه را دوباره بارگذاری کنید</p>
+    </div>
+    <button class="retry" onclick="location.reload()">تلاش دوباره</button>
+    <div class="en">
+      This store is not reachable while a VPN is active.<br>
+      Please disable your VPN and reload the page.
+    </div>
+  </div>
+</body>
+</html>

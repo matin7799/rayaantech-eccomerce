@@ -229,9 +229,51 @@ export class CheckoutService {
         `);
       }
 
+      // Last resort: an active product with no variant rows at all (variants are
+      // only created when the admin defines attributes). Lazily create its
+      // default variant — same pattern as admin fullUpdateProduct — then retry.
+      if (result.rows.length === 0) {
+        const created = await tx.execute<{ id: string } & Record<string, unknown>>(sql`
+          INSERT INTO product_variants (product_id, sku, stock, price_modifier)
+          SELECT
+            p.id,
+            CASE
+              WHEN p.sku IS NOT NULL
+                AND NOT EXISTS (SELECT 1 FROM product_variants x WHERE x.sku = p.sku)
+              THEN p.sku
+              ELSE 'PV-' || p.id::text
+            END,
+            p.stock,
+            '0'
+          FROM products p
+          WHERE p.id = ${item.variantId}
+            AND p.is_active = true
+            AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+          RETURNING id
+        `);
+
+        if (created.rows.length > 0) {
+          this.logger.log(
+            `Auto-created default variant ${created.rows[0].id} for variant-less product ${item.variantId}`,
+          );
+          result = await tx.execute<VariantPricingRow>(sql`
+            SELECT
+              pv.id as variant_id, pv.product_id, pv.sku,
+              pv.stock as variant_stock, pv.price_modifier,
+              p.base_price, p.discounted_price, p.campaign_price,
+              p.campaign_start_at, p.campaign_end_at, p.wholesale_price
+            FROM product_variants pv
+            INNER JOIN products p ON p.id = pv.product_id
+            WHERE pv.id = ${created.rows[0].id}
+            LIMIT 1
+          `);
+        }
+      }
+
       const row = result.rows[0];
       if (!row) {
-        throw new BadRequestException(`Variant ${item.variantId} not found or product is inactive`);
+        this.logger.warn(`Checkout rejected: variant ${item.variantId} not found or product inactive`);
+        throw new BadRequestException("یکی از محصولات سبد خرید موجود نیست یا غیرفعال شده است. لطفاً سبد خرید خود را به‌روزرسانی کنید.");
       }
 
       if (row.variant_stock < item.quantity) {

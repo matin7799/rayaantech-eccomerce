@@ -59,10 +59,12 @@ function otpAttemptsKey(mobile: string): string {
  * - Bypasses MelliPayamak entirely
  * - Prints high-visibility log: [DEV/SMS-MOCK] Generated Verification Token: <CODE> for Target: <MOBILE>
  *
- * API Reference: docs/mellipyamak/send-pattern.md + webservice-SharedNumber.pdf
- * Endpoint: POST https://console.melipayamak.com/api/send/shared/{token}
- * Payload: { "bodyId": 455139, "to": "09XXXXXXXXX", "args": ["<code>"] }
- * Response: { "recId": 3741437414, "status": "error_description_if_any" }
+ * API Reference: docs/mellipyamak/send-pattern.md
+ *
+ * MelliPayamak console shared-line pattern API:
+ *   POST https://console.melipayamak.com/api/send/shared/{token}
+ *   Payload: { "bodyId": 455139, "to": "09XXXXXXXXX", "args": ["<code>"] }
+ *   Response: { "recId": 3741437414, "status": "error_description_if_any" }
  */
 @Injectable()
 export class OtpService {
@@ -157,7 +159,22 @@ export class OtpService {
   }
 
   /**
-   * Send the OTP code via the MelliPayamak shared-line pattern API.
+   * Send the OTP code via MelliPayamak console shared-line pattern API.
+   *
+   * @throws Error on network failure, timeout, missing config, or rejection
+   */
+  private async sendPatternSms(mobile: string, code: string): Promise<void> {
+    if (this.melliPayamakToken) {
+      await this.sendViaSharedToken(mobile, code);
+      return;
+    }
+    throw new Error(
+      "MelliPayamak is not configured: set MELIPAYAMAK_SHARED_TOKEN",
+    );
+  }
+
+  /**
+   * Send via the MelliPayamak console shared-line pattern API.
    *
    * Endpoint: POST https://console.melipayamak.com/api/send/shared/{token}
    * Body: { "bodyId": <approved pattern id>, "to": "09XXXXXXXXX", "args": ["<code>"] }
@@ -168,7 +185,7 @@ export class OtpService {
    *
    * @throws Error on network failure, timeout, or non-success response
    */
-  private async sendPatternSms(mobile: string, code: string): Promise<void> {
+  private async sendViaSharedToken(mobile: string, code: string): Promise<void> {
     const url = `https://console.melipayamak.com/api/send/shared/${this.melliPayamakToken}`;
 
     const body = JSON.stringify({

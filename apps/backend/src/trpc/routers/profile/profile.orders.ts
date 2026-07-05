@@ -14,17 +14,16 @@ export function createProfileOrdersRouter(db: NodePgDatabase) {
 
       const result = await db.execute<OrderStatsRow>(sql`
         SELECT
-          COUNT(*) FILTER (WHERE status = 'pending') AS pending,
           COUNT(*) FILTER (WHERE status = 'processing') AS processing,
           COUNT(*) FILTER (WHERE status = 'shipped') AS shipped,
           COUNT(*) FILTER (WHERE status = 'delivered') AS delivered
         FROM orders
         WHERE user_id = ${userId}
+          AND status != 'pending'
       `);
 
       const stats = result.rows[0];
       return {
-        pending: parseInt(stats?.pending ?? "0", 10),
         processing: parseInt(stats?.processing ?? "0", 10),
         shipped: parseInt(stats?.shipped ?? "0", 10),
         delivered: parseInt(stats?.delivered ?? "0", 10),
@@ -55,6 +54,7 @@ export function createProfileOrdersRouter(db: NodePgDatabase) {
             SELECT id, status, total_amount, discount_amount, shipping_address, items, created_at, updated_at
             FROM orders
             WHERE user_id = ${userId}
+              AND status != 'pending'
             ORDER BY created_at DESC
             LIMIT ${limit} OFFSET ${offset}
           `);

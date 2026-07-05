@@ -158,27 +158,28 @@ async function main() {
   const pool = new pg.Pool({ connectionString: DATABASE_URL });
   const db = drizzle(pool);
 
-  let inserted = 0;
-  for (const v of values) {
-    if (!v.mobile) continue;
-    await db
-      .insert(users)
-      .values(v)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          fullName: v.fullName,
-          email: v.email,
-          mobile: v.mobile,
-          passwordHash: v.passwordHash,
-          isVerified: v.isVerified,
-          role: v.role,
-          addresses: v.addresses,
-          updatedAt: v.updatedAt,
-        },
-      });
-    inserted++;
-  }
+let inserted = 0;
+for (const v of values) {
+  if (!v.mobile) continue;
+
+  await db
+    .insert(users)
+    .values(v)
+    .onConflictDoUpdate({
+      target: users.mobile,
+      set: {
+        fullName: v.fullName,
+        email: v.email,
+        passwordHash: v.passwordHash,
+        isVerified: v.isVerified,
+        role: v.role,
+        addresses: v.addresses,
+        updatedAt: v.updatedAt,
+      },
+    });
+
+  inserted++;
+}
 
   console.log(`  ✓ Users upserted: ${inserted}`);
   console.log("\n✅ User seed complete!");

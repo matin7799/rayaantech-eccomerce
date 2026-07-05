@@ -125,7 +125,10 @@ export class DigipayService {
       FROM products p
       LEFT JOIN brands b ON b.id = p.brand_id
       LEFT JOIN categories c ON c.id = p.primary_category_id
-      WHERE p.id = ANY(${productIds}::uuid[])
+      WHERE p.id IN (${sql.join(
+        productIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})
     `);
 
     const productMap = new Map(dbResult.rows.map((row) => [row.product_id, row]));
