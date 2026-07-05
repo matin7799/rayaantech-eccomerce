@@ -81,7 +81,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  * docs/torob/product_api_v3.md. Authenticated by TorobJwtGuard (EdDSA JWT via
  * X-Torob-Token).
  *
- * Prices are stored in Rials; the Torob spec requires integer Toman — divide by 10.
+ * Prices are stored in Toman (same unit the storefront displays); the Torob spec
+ * also requires integer Toman, so stored values are sent as-is — NEVER divide by 10.
  */
 // "api/v1/torob" is an alias: the URL registered in the Torob panel points there,
 // so POST /api/v1/torob/products must resolve to this same spec-compliant handler.
@@ -265,8 +266,8 @@ export class TorobV3Controller {
     ]);
 
     return rows.map((row) => {
-      const rialPrice = Number(row.torob_price ?? row.discounted_price ?? row.base_price);
-      const oldPriceRial = row.discounted_price ? Number(row.base_price) : null;
+      const price = Number(row.torob_price ?? row.discounted_price ?? row.base_price);
+      const oldPrice = row.discounted_price ? Number(row.base_price) : null;
 
       return {
         page_unique: row.id,
@@ -274,8 +275,8 @@ export class TorobV3Controller {
         product_group_id: null,
         title: row.name,
         subtitle: null,
-        current_price: this.rialToToman(rialPrice),
-        old_price: oldPriceRial !== null ? this.rialToToman(oldPriceRial) : null,
+        current_price: Math.trunc(price),
+        old_price: oldPrice !== null ? Math.trunc(oldPrice) : null,
         availability: row.is_active && row.stock > 0,
         category_name: row.category_name,
         image_links: imageMap.get(row.id) ?? [],
@@ -367,11 +368,6 @@ export class TorobV3Controller {
     } catch {
       return null;
     }
-  }
-
-  /** Rials (stored) → integer Toman (Torob spec). Rounds toward zero. */
-  private rialToToman(rials: number): number {
-    return Math.trunc(rials / 10);
   }
 
   private emptyFeed(): TorobFeedResponse {

@@ -151,7 +151,7 @@ export class TorobOrdersController {
   private mapOrder(row: TorobOrderRow, slugById: Map<string, string>): TorobOrderRecord {
     const products: TorobOrderProduct[] = (row.items ?? []).map((item) => ({
       product_url: `${this.frontendUrl}/products/${slugById.get(item.productId) ?? item.productId}`,
-      product_price: this.rialToToman(Number(item.unitPrice)),
+      product_price: Math.trunc(Number(item.unitPrice)),
       quantity: item.quantity,
     }));
 
@@ -161,8 +161,9 @@ export class TorobOrdersController {
       torob_clid: row.torob_clid,
       status: CANCELLED_STATUSES.has(row.status) ? "cancelled" : "completed",
       psp: row.payment_method ?? null,
-      order_value: this.rialToToman(Number(row.total_amount)),
-      shipping_amount: row.shipping_amount ? this.rialToToman(Number(row.shipping_amount)) : null,
+      // Amounts are stored in Toman — the unit Torob expects — so no conversion.
+      order_value: Math.trunc(Number(row.total_amount)),
+      shipping_amount: row.shipping_amount ? Math.trunc(Number(row.shipping_amount)) : null,
       phone_number: row.phone_number ?? null,
       products,
     };
@@ -185,10 +186,5 @@ export class TorobOrdersController {
       throw new BadRequestException("purchase_timestamp_gt must be ISO 8601 UTC");
     }
     return d;
-  }
-
-  /** Rials → integer Toman. */
-  private rialToToman(rials: number): number {
-    return Math.trunc(rials / 10);
   }
 }
