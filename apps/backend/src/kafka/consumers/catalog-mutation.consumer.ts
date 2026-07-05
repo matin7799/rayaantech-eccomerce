@@ -47,12 +47,11 @@ export class CatalogMutationConsumer {
   ) {
     const groupId = this.configService.get<string>("KAFKA_GROUP_ID", "rayan-tech-workers");
     this.consumer = this.kafka.consumer({ groupId: `${groupId}-catalog` });
+    // Embedding generation runs through AvalAI's OpenAI-compatible gateway —
+    // reachable from Iranian servers directly, no outbound proxy required.
     this.openai = new OpenAI({
-      apiKey: this.configService.get<string>("openai.apiKey", ""),
-      fetch: this.configService.get<any>("openai.fetch"),
-      fetchOptions: {
-        dispatcher: this.configService.get<any>("openai.dispatcher"),
-      },
+      apiKey: this.configService.get<string>("AVALAI_API_KEY", ""),
+      baseURL: this.configService.get<string>("AVALAI_BASE_URL", "https://api.avalai.ir/v1"),
     });
 
     this.retryConfig = {

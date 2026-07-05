@@ -55,7 +55,9 @@ import { VoiceAiModule } from "./voice-ai";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [".env.local", ".env"],
+      // Package-local env first, then the monorepo-root .env (single source of
+      // truth for dev credentials — also consumed by docker-compose).
+      envFilePath: [".env.local", ".env", "../../.env.local", "../../.env"],
       load: [configuration],
     }),
     LoggerModule,

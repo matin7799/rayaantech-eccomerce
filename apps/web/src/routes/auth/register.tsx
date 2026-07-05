@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { AuthSubmitButton } from "../../components/auth/AuthSubmitButton";
 import { trpc } from "../../lib/trpc";
+import { useGuestGuard } from "../../lib/useGuestGuard";
 
 /** Search params: prefilled mobile (from the OTP-failed fallback) + redirect-back */
 const searchSchema = z.object({
@@ -33,6 +34,9 @@ function RegisterPage() {
   const { mobile: prefillMobile, from } = useSearch({ from: "/auth/register" });
   const utils = trpc.useUtils();
 
+  // Already logged in? Bounce back instead of showing the registration form.
+  const { markFlowStarted } = useGuestGuard(from);
+
   const [mobile, setMobile] = useState(prefillMobile ?? "");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -54,6 +58,9 @@ function RegisterPage() {
       e.preventDefault();
       if (!validate()) return;
 
+      // Mid-flow: don't let the freshly-created session's guest guard race our navigation.
+      markFlowStarted();
+
       try {
         await registerMutation.mutateAsync({
           mobile,
@@ -71,7 +78,18 @@ function RegisterPage() {
         toast.error(message);
       }
     },
-    [mobile, fullName, password, validate, registerMutation, utils, router, navigate, from],
+    [
+      mobile,
+      fullName,
+      password,
+      validate,
+      registerMutation,
+      utils,
+      router,
+      navigate,
+      from,
+      markFlowStarted,
+    ],
   );
 
   return (

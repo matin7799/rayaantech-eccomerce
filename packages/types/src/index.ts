@@ -29,6 +29,7 @@ export {
   AVALAI_EMBEDDING_MODELS,
   DEFAULT_AI_CONFIG,
 } from "./ai-config.schemas.js";
+export { type AvalAiModelEntry, AVALAI_ALL_MODELS } from "./avalai-models.generated.js";
 export {
   type CheckAccountInput,
   CheckAccountSchema,

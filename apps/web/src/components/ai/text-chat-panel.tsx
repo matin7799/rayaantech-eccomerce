@@ -97,7 +97,7 @@ export function TextChatPanel({
                         )}
                       </MessageAvatar>
                       <MessageContent>
-                        <ChatBubble role={msg.role}>
+                        <ChatBubble role={msg.role} animate={msg.id.startsWith("assistant-")}>
                           {msg.content ? msg.content : msg.isStreaming ? <StreamingDots /> : null}
                         </ChatBubble>
                         {msg.matchedProducts && msg.matchedProducts.length > 0 && (

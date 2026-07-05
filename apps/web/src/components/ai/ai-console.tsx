@@ -5,8 +5,10 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { useAIConsultantStore } from "../../lib/store";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
+import { ChatTeaser } from "./chat-teaser";
 import { TextChatPanel } from "./text-chat-panel";
-import { VoicePulseRing, VoiceVisualization } from "./voice-components";
+import { VoiceChatPanel } from "./voice-chat-panel";
+import { VoicePulseRing } from "./voice-components";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -199,19 +201,23 @@ export function AiConsole() {
   return (
     <>
       {!open && (
-        <motion.button
-          type="button"
-          onClick={handleOpen}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          whileTap={{ scale: 0.95 }}
-          className="fixed bottom-24 inset-e-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg md:bottom-6"
-          aria-label="مشاور هوشمند رایان‌تک"
-        >
-          <VoicePulseRing />
-          <Sparkles className="relative h-5 w-5" />
-        </motion.button>
+        <>
+          <ChatTeaser onOpen={handleOpen} />
+          <motion.button
+            type="button"
+            onClick={handleOpen}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
+            className="fixed bottom-24 inset-e-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-accent to-accent/80 text-white shadow-[0_10px_30px_-6px_var(--color-accent)] ring-1 ring-white/20 md:bottom-6"
+            aria-label="مشاور هوشمند رایان‌تک"
+          >
+            <VoicePulseRing />
+            <Sparkles className="relative h-5 w-5" />
+          </motion.button>
+        </>
       )}
 
       <AnimatePresence>
@@ -221,7 +227,7 @@ export function AiConsole() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.94 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-20 inset-e-5 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl border border-[--glass-border] bg-surface/95 shadow-[--shadow-glass] backdrop-blur-xl md:bottom-6"
+            className="fixed bottom-20 inset-e-2 md:inset-e-5 z-50 flex h-130 w-95 flex-col overflow-hidden rounded-2xl border border-[--glass-border] bg-surface/95 shadow-[--shadow-glass] backdrop-blur-xl md:bottom-6"
             dir="rtl"
             role="dialog"
             aria-label="مشاور هوش مصنوعی"
@@ -234,10 +240,10 @@ export function AiConsole() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-text-primary">
-                    {activeSessionTitle || "رایانوایز (مشاور سخت‌افزار)"}
+                    {activeSessionTitle || "هوش رایان(مشاور هوشمند)"}
                   </span>
                   {productContext && (
-                    <span className="text-[10px] text-text-muted line-clamp-1 max-w-[140px]">
+                    <span className="text-[10px] text-text-muted line-clamp-1 max-w-35">
                       {productContext.productName}
                     </span>
                   )}
@@ -319,11 +325,7 @@ export function AiConsole() {
               />
             )}
 
-            {activeTab === "voice" && (
-              <div className="flex flex-1 flex-col overflow-hidden">
-                <VoiceVisualization active={false} />
-              </div>
-            )}
+            {activeTab === "voice" && <VoiceChatPanel />}
           </motion.div>
         )}
       </AnimatePresence>

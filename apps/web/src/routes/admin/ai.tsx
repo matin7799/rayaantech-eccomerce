@@ -1,10 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  type AiConfig,
-  AVALAI_CHAT_MODELS,
-  AVALAI_EMBEDDING_MODELS,
-  aiConfigSchema,
-} from "@rayan-tech/types";
+import { type AiConfig, aiConfigSchema } from "@rayan-tech/types";
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
@@ -26,14 +21,8 @@ import {
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { ModelCombobox } from "../../components/admin/ModelCombobox";
 import { Button } from "../../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Switch } from "../../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -226,21 +215,11 @@ function SettingsForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <FieldLabel>مدل سبک (گفتگوی سریع)</FieldLabel>
-            <Select
+            <ModelCombobox
               value={liteModel}
-              onValueChange={(v) => v && setValue("liteModel", v, { shouldDirty: true })}
-            >
-              <SelectTrigger className="h-10 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AVALAI_CHAT_MODELS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => setValue("liteModel", v, { shouldDirty: true })}
+              placeholder="انتخاب مدل سبک"
+            />
             {errors.liteModel && (
               <span className="text-[11px] text-danger">{errors.liteModel.message}</span>
             )}
@@ -248,21 +227,11 @@ function SettingsForm({
 
           <div className="flex flex-col gap-1.5">
             <FieldLabel>مدل پیشرفته (مشاوره عمیق)</FieldLabel>
-            <Select
+            <ModelCombobox
               value={proModel}
-              onValueChange={(v) => v && setValue("proModel", v, { shouldDirty: true })}
-            >
-              <SelectTrigger className="h-10 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AVALAI_CHAT_MODELS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => setValue("proModel", v, { shouldDirty: true })}
+              placeholder="انتخاب مدل پیشرفته"
+            />
             {errors.proModel && (
               <span className="text-[11px] text-danger">{errors.proModel.message}</span>
             )}
@@ -270,21 +239,14 @@ function SettingsForm({
 
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <FieldLabel>مدل امبدینگ (جستجوی معنایی — خروجی ۱۵۳۶ بعدی)</FieldLabel>
-            <Select
+            <ModelCombobox
               value={embeddingModel}
-              onValueChange={(v) => v && setValue("embeddingModel", v, { shouldDirty: true })}
-            >
-              <SelectTrigger className="h-10 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AVALAI_EMBEDDING_MODELS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => setValue("embeddingModel", v, { shouldDirty: true })}
+              placeholder="انتخاب مدل امبدینگ"
+              filter={(m) =>
+                m.value.toLowerCase().includes("embed") || m.value.toLowerCase().includes("voyage")
+              }
+            />
           </div>
         </div>
       </SectionCard>

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Inject, Logger, UseGuards } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
@@ -12,8 +13,10 @@ import {
 } from "@nestjs/websockets";
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type Redis from "ioredis";
 import type { Server, Socket } from "socket.io";
 import { DRIZZLE_CLIENT } from "../database/database.constants";
+import { REDIS_CLIENT } from "../redis/redis.constants";
 import { VoiceAiFirewallGuard } from "./guards/voice-ai-firewall.guard";
 import { MARKETING_AI_INTENT_EVENT } from "./voice-ai.constants";
 import { type ProductContext, VoiceAiService } from "./voice-ai.service";
@@ -99,21 +102,29 @@ export class VoiceAiGateway implements OnGatewayConnection, OnGatewayDisconnect 
     private readonly eventEmitter: EventEmitter2,
     @Inject(DRIZZLE_CLIENT)
     private readonly db: NodePgDatabase,
+    @Inject(REDIS_CLIENT)
+    private readonly redis: Redis,
   ) {}
 
   /**
    * Handle new WebSocket connection.
    *
-   * Supports both authenticated (token) and guest (guest_session_id) connections.
-   * Guests are allowed but receive a limited 3-message budget.
+   * Three auth paths, checked in order:
+   * 1. rt_tok_ API token in the query string (server-to-server callers)
+   * 2. rt_session httpOnly cookie (first-party web app — same mechanism as tRPC)
+   * 3. Guest with guest_session_id (limited 3-message lifetime budget)
    */
-  handleConnection(client: Socket): void {
+  async handleConnection(client: Socket): Promise<void> {
     const token = client.handshake.query.token as string | undefined;
     const guestSessionId = client.handshake.query.guest_session_id as string | undefined;
-    const isAuthenticated = !!token && token.startsWith("rt_tok_");
+    const hasApiToken = !!token && token.startsWith("rt_tok_");
 
-    // If neither token nor guest_session_id provided, use socket.id as guest
-    const effectiveGuestId = guestSessionId || (isAuthenticated ? null : client.id);
+    // Resolve the web app's session cookie (same store the tRPC context uses)
+    const cookieUserId = hasApiToken ? null : await this.resolveSessionCookie(client);
+    const isAuthenticated = hasApiToken || !!cookieUserId;
+
+    // If neither token, session cookie, nor guest_session_id → socket.id as guest
+    const effectiveGuestId = isAuthenticated ? null : guestSessionId || client.id;
 
     // Create session tracking
     const session: ClientSession = {
@@ -121,17 +132,50 @@ export class VoiceAiGateway implements OnGatewayConnection, OnGatewayDisconnect 
       dbSessionId: null,
       isAuthenticated,
       guestSessionId: effectiveGuestId,
-      userId: null, // Will be resolved from token claims if authenticated
+      userId: cookieUserId,
     };
 
     this.activeSessions.set(client.id, session);
+
+    // Expose the auth result to the per-message firewall guard
+    client.data.isAuthenticated = isAuthenticated;
 
     // Initialize the DB session asynchronously (non-blocking)
     void this.initializeDbSession(client.id, session);
 
     this.logger.debug(
-      `Voice AI client connected: ${client.id} (${isAuthenticated ? "authenticated" : `guest:${effectiveGuestId}`})`,
+      `Voice AI client connected: ${client.id} (${
+        hasApiToken
+          ? "api-token"
+          : cookieUserId
+            ? `user:${cookieUserId}`
+            : `guest:${effectiveGuestId}`
+      })`,
     );
+  }
+
+  /**
+   * Resolve the rt_session cookie from the WebSocket handshake to a user id.
+   * Mirrors SessionService.resolveSession (sha256 → Redis session:{hash}).
+   */
+  private async resolveSessionCookie(client: Socket): Promise<string | null> {
+    try {
+      const cookieHeader = client.handshake.headers.cookie;
+      if (!cookieHeader) return null;
+
+      const match = cookieHeader.match(/(?:^|;\s*)rt_session=([^;]+)/);
+      if (!match) return null;
+
+      const rawToken = decodeURIComponent(match[1]);
+      const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+      const data = await this.redis.get(`session:${tokenHash}`);
+      if (!data) return null;
+
+      const parsed = JSON.parse(data) as { userId?: string };
+      return parsed.userId ?? null;
+    } catch {
+      return null;
+    }
   }
 
   /**

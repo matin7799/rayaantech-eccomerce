@@ -1,8 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AuthFlow } from "../components/auth";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/login")({ component: LoginPage });
-
-function LoginPage() {
-  return <AuthFlow />;
-}
+/**
+ * /login — legacy alias. The real login flow lives at /auth/login
+ * (this route previously rendered a mocked AuthFlow that never hit the API).
+ */
+export const Route = createFileRoute("/login")({
+  beforeLoad: () => {
+    throw redirect({ to: "/auth/login" });
+  },
+});

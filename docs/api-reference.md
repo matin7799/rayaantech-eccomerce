@@ -1,6 +1,6 @@
 # Rayan Tech E-Commerce — API Reference
 
-> **Base URL:** `https://api.rayantech.ir` (production) | `http://localhost:3000` (development)
+> **Base URL:** `https://api.rayantech.ir` (production) | `http://localhost:3003` (development — backend `PORT`, see root `.env`)
 >
 > **API Version:** v1
 >

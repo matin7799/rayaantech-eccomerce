@@ -10,7 +10,6 @@ import {
   EMBEDDING_MODEL,
   GROUNDED_SYSTEM_PROMPT,
   MAX_VECTOR_RESULTS,
-  NO_MATCH_FALLBACK_FA,
 } from "./voice-ai.constants";
 
 /**
@@ -70,13 +69,17 @@ export class VoiceAiService {
     @Inject(ConfigService)
     private readonly configService: ConfigService,
   ) {
+    // All voice AI traffic (Whisper STT, embeddings, chat) goes through
+    // AvalAI's OpenAI-compatible gateway — reachable from Iranian servers
+    // directly, no outbound proxy required.
+    const avalaiKey = this.configService.get<string>("AVALAI_API_KEY", "");
     this.openai = new OpenAI({
-      apiKey: this.configService.getOrThrow<string>("openai.apiKey"),
-      fetch: this.configService.get<any>("openai.fetch"),
-      fetchOptions: {
-        dispatcher: this.configService.get<any>("openai.dispatcher"),
-      },
+      apiKey: avalaiKey,
+      baseURL: this.configService.get<string>("AVALAI_BASE_URL", "https://api.avalai.ir/v1"),
     });
+    if (!avalaiKey) {
+      this.logger.warn("AVALAI_API_KEY not configured — voice AI requests will fail");
+    }
   }
 
   /**
@@ -125,6 +128,11 @@ export class VoiceAiService {
           model: "whisper-1",
           file,
           language: "fa", // Optimize for Persian transcription
+          // Domain vocabulary bias — Whisper uses the prompt as spelling/style
+          // context, dramatically improving recognition of shop-specific terms
+          // (e.g. «لپ‌تاپ» instead of «لپتوب/لابتوب»).
+          prompt:
+            "مکالمه فارسی مشتری با مشاور فروشگاه رایان‌تک درباره خرید لپ‌تاپ، گوشی موبایل، تبلت، مک‌بوک، سرفیس، کامپیوتر، مانیتور و لوازم جانبی. کلمات رایج: لپ‌تاپ، معرفی کنید، قیمت، بودجه، گیمینگ، برنامه‌نویسی، اقساطی، استوک، اوپن‌باکس، کارکرده، میلیون تومان.",
         },
         { signal: signal ?? undefined },
       );
@@ -163,20 +171,25 @@ export class VoiceAiService {
     if (signal?.aborted) return;
 
     // Step 2: Search products using pgvector cosine similarity
-    const matchedProducts = await this.searchProductsByVector(embedding);
+    let matchedProducts = await this.searchProductsByVector(embedding);
 
     if (signal?.aborted) return;
 
-    // Step 3: Handle zero-match case with fixed fallback
+    // Step 2b: Vector search can come up empty (e.g. embeddings not yet
+    // generated) — fall back to a keyword search over product names so the
+    // consultation still works.
     if (matchedProducts.length === 0) {
-      this.logger.debug(`No vector matches for query: "${normalizedQuery.slice(0, 50)}..."`);
-      onChunk(NO_MATCH_FALLBACK_FA);
-      onComplete(NO_MATCH_FALLBACK_FA, []);
-      return;
+      matchedProducts = await this.searchProductsByKeywords(normalizedQuery);
+      if (signal?.aborted) return;
     }
 
-    // Step 4: Build grounded context string from matched products
-    const contextString = this.buildProductContext(matchedProducts);
+    // Step 3: Still nothing (greeting/small-talk or truly no matching stock) —
+    // let the LLM answer conversationally with an explicitly empty catalog so
+    // it can greet, clarify budget/use-case, and invite a more specific query.
+    const contextString =
+      matchedProducts.length > 0
+        ? this.buildProductContext(matchedProducts)
+        : "(هیچ محصول منطبقی در کاتالوگ یافت نشد)";
     const productSummaries: ProductContext[] = matchedProducts.map((p) => ({
       id: p.id,
       name: p.name,
@@ -229,6 +242,53 @@ export class VoiceAiService {
       WHERE embedding IS NOT NULL
         AND is_active = true
       ORDER BY embedding <=> ${vectorLiteral}::vector ASC
+      LIMIT ${MAX_VECTOR_RESULTS}
+    `);
+
+    return result.rows;
+  }
+
+  /**
+   * Keyword fallback when vector search yields nothing (e.g. product
+   * embeddings not generated yet). Matches significant query tokens against
+   * product names with ILIKE.
+   */
+  private async searchProductsByKeywords(query: string): Promise<ProductVectorRow[]> {
+    // Strip filler words; keep tokens long enough to be discriminative.
+    const stopWords = new Set([
+      "سلام",
+      "میتونی",
+      "می‌تونی",
+      "میشه",
+      "لطفا",
+      "لطفاً",
+      "برای",
+      "معرفی",
+      "کنید",
+      "کنی",
+      "دارید",
+      "داری",
+      "چیه",
+      "بهترین",
+      "خوبه",
+      "قیمت",
+    ]);
+    const tokens = query
+      .split(/\s+/)
+      .map((t) => t.replace(/[^؀-ۿa-zA-Z0-9]/g, ""))
+      .filter((t) => t.length > 2 && !stopWords.has(t));
+
+    if (tokens.length === 0) return [];
+
+    const conditions = tokens.map((t) => sql`name ILIKE ${`%${t}%`}`);
+
+    const result = await this.db.execute<ProductVectorRow>(sql`
+      SELECT id, name, slug, description, base_price, discounted_price, grade, stock,
+             0 as similarity
+      FROM products
+      WHERE is_active = true
+        AND (${sql.join(conditions, sql` OR `)})
+      ORDER BY stock DESC
       LIMIT ${MAX_VECTOR_RESULTS}
     `);
 

@@ -8,7 +8,10 @@ import OtpFailedStep from "../../components/auth/OtpFailedStep";
 import OtpVerifyInput from "../../components/auth/OtpVerifyInput";
 import PasswordStepForm from "../../components/auth/PasswordStepForm";
 import PhoneStepForm from "../../components/auth/PhoneStepForm";
+import { Skeleton } from "../../components/ui/skeleton";
 import { trpc } from "../../lib/trpc";
+import { useGuestGuard } from "../../lib/useGuestGuard";
+import { cn } from "../../lib/utils";
 
 /** Search params schema — captures ?from= for redirect-back */
 const searchSchema = z.object({
@@ -29,6 +32,15 @@ interface AccountState {
 
 const STEP_SPRING = { type: "spring" as const, stiffness: 300, damping: 25 };
 
+/** Visual progress position of each step in the 3-dot indicator. */
+const STEP_PROGRESS: Record<AuthStep, number> = {
+  phone: 0,
+  method: 1,
+  otp: 2,
+  password: 2,
+  "otp-failed": 2,
+};
+
 /**
  * /auth/login — B2C consumer login page.
  * Multi-step OTP/Password authentication wired to tRPC backend.
@@ -46,6 +58,9 @@ function LoginPage() {
   const router = useRouter();
   const { from } = useSearch({ from: "/auth/login" });
   const utils = trpc.useUtils();
+
+  // Already logged in? Bounce back to origin (or home) instead of showing the form.
+  const { markFlowStarted, isCheckingSession } = useGuestGuard(from);
 
   const sendOtpMutation = trpc.auth.sendOtp.useMutation();
   const verifyOtpMutation = trpc.auth.verifyOtp.useMutation();
@@ -85,10 +100,16 @@ function LoginPage() {
   );
 
   /* Step 1 → Step 2: Show method selection */
-  const handlePhoneSubmit = useCallback(async (phoneNumber: string) => {
-    setPhone(phoneNumber);
-    setStep("method");
-  }, []);
+  const handlePhoneSubmit = useCallback(
+    async (phoneNumber: string) => {
+      // From here on the user is mid-flow — suppress the guest guard so the
+      // session created by verify/login doesn't race our own navigation.
+      markFlowStarted();
+      setPhone(phoneNumber);
+      setStep("method");
+    },
+    [markFlowStarted],
+  );
 
   /* Attempt to send the OTP; on failure branch to the fallback step. */
   const attemptSendOtp = useCallback(async () => {
@@ -174,8 +195,38 @@ function LoginPage() {
   const goToPhone = useCallback(() => setStep("phone"), []);
   const goToMethod = useCallback(() => setStep("method"), []);
 
+  // While the session resolves, show a lightweight skeleton so an
+  // already-authenticated user never flashes the login form before redirect.
+  if (isCheckingSession) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="mx-auto h-6 w-40 rounded-lg" />
+        <Skeleton className="mx-auto h-4 w-56 rounded-lg" />
+        <Skeleton className="h-12 w-full rounded-xl" />
+        <Skeleton className="h-11 w-full rounded-xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
+      {/* 3-dot step progress indicator */}
+      <div className="flex items-center justify-center gap-1.5" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-300",
+              STEP_PROGRESS[step] === i
+                ? "w-6 bg-accent"
+                : STEP_PROGRESS[step] > i
+                  ? "w-1.5 bg-accent/50"
+                  : "w-1.5 bg-border",
+            )}
+          />
+        ))}
+      </div>
+
       <AnimatePresence mode="wait">
         {step === "phone" && (
           <motion.div

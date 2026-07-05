@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import OtpVerifyInput from "../../components/auth/OtpVerifyInput";
 import { trpc } from "../../lib/trpc";
+import { useGuestGuard } from "../../lib/useGuestGuard";
 
 export const Route = createFileRoute("/auth/partner-register")({
   component: PartnerRegisterPage,
@@ -39,6 +40,9 @@ function PartnerRegisterPage() {
   const router = useRouter();
   const utils = trpc.useUtils();
 
+  // Already logged in? Bounce home instead of showing partner registration.
+  const { markFlowStarted } = useGuestGuard();
+
   const sendOtpMutation = trpc.auth.sendOtp.useMutation();
   const registerPartnerMutation = trpc.auth.registerPartner.useMutation();
 
@@ -55,6 +59,8 @@ function PartnerRegisterPage() {
         return;
       }
       setPhoneLoading(true);
+      // Mid-flow from here — suppress the guest guard (OTP verify opens a session).
+      markFlowStarted();
       try {
         await sendOtpMutation.mutateAsync({ mobile: phone });
         setStep("otp");
@@ -64,7 +70,7 @@ function PartnerRegisterPage() {
         setPhoneLoading(false);
       }
     },
-    [phone, sendOtpMutation],
+    [phone, sendOtpMutation, markFlowStarted],
   );
 
   /* ─── Step 2: OTP ─── */

@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Mic } from "lucide-react";
 
 export const VOICE_PULSE_ANIMATION = { scale: [1, 1.06, 1], opacity: [0.8, 1, 0.8] };
 export const VOICE_PULSE_TRANSITION = { duration: 2, repeat: Infinity, ease: "easeInOut" as const };
@@ -17,30 +16,6 @@ export function VoicePulseRing() {
         animate={VOICE_PULSE_ANIMATION}
         transition={{ ...VOICE_PULSE_TRANSITION, delay: 0.4 }}
       />
-    </div>
-  );
-}
-
-export function VoiceVisualization({ active }: { active: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 py-16">
-      <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-accent/10">
-        <motion.span
-          className="absolute inset-[-12px] rounded-full border-2 border-accent/15"
-          animate={active ? VOICE_PULSE_ANIMATION : { scale: 1, opacity: 0.2 }}
-          transition={{ ...VOICE_PULSE_TRANSITION, duration: 2.5 }}
-        />
-        <motion.span
-          className="absolute inset-[-6px] rounded-full border border-accent/25"
-          animate={active ? VOICE_PULSE_ANIMATION : { scale: 1, opacity: 0.2 }}
-          transition={{ ...VOICE_PULSE_TRANSITION, duration: 2, delay: 0.3 }}
-        />
-        <Mic className="relative h-8 w-8 text-accent" />
-      </div>
-      <p className="text-xs text-text-muted">
-        {active ? "در حال پردازش صدا..." : "برای شروع مکالمه صوتی، ضربه بزنید"}
-      </p>
-      <p className="text-xs bg-amber-500 p-2 rounded-2xl text-white-100">به زودی فعال میگردد...</p>
     </div>
   );
 }

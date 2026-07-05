@@ -214,9 +214,12 @@ export class VoiceAiFirewallGuard implements CanActivate {
   }
 
   /**
-   * Determine if the WebSocket client is authenticated (has valid rt_tok_ token).
+   * Determine if the WebSocket client is authenticated.
+   * Either an rt_tok_ API token in the handshake query, or a valid rt_session
+   * cookie resolved by the gateway on connect (client.data.isAuthenticated).
    */
   private isAuthenticatedClient(client: Socket): boolean {
+    if (client.data?.isAuthenticated === true) return true;
     const token = client.handshake.query.token as string | undefined;
     return !!token && token.startsWith("rt_tok_");
   }

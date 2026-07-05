@@ -17,12 +17,21 @@ const OTP_TTL_SECONDS = 120;
 const MAX_ATTEMPTS = 5;
 
 /**
- * MelliPayamak Console OTP API response shape.
+ * MelliPayamak shared-line pattern API response shape.
+ * `recId` is the delivery tracking id; `status` carries an error description
+ * (Persian) when the send fails.
  */
-interface MelliPayamakOtpResponse {
-  code: string;
+interface MelliPayamakPatternResponse {
+  recId: number | null;
   status: string;
 }
+
+/**
+ * Approved pattern (متن پیشفرض) body id in the MelliPayamak console.
+ * The pattern text contains a single {0} placeholder that receives the code.
+ * Overridable via MELIPAYAMAK_OTP_BODY_ID.
+ */
+const DEFAULT_OTP_BODY_ID = 455139;
 
 /**
  * Redis key builders for OTP state.
@@ -36,28 +45,30 @@ function otpAttemptsKey(mobile: string): string {
 }
 
 /**
- * OTP service integrating MelliPayamak Console OTP API.
+ * OTP service integrating the MelliPayamak shared-line pattern API.
  *
  * Flow:
- * 1. Call MelliPayamak Console OTP endpoint (provider generates the code)
- * 2. Store the returned code in Redis with strict 120s TTL
- * 3. On failure: log under [auth/sms-fail], publish failure event to Kafka DLQ
- * 4. Verify codes with attempt-limited lockout
+ * 1. Generate a 5-digit code locally
+ * 2. Send it via the approved pattern (bodyId {@link DEFAULT_OTP_BODY_ID}) —
+ *    the pattern's {0} placeholder receives the code
+ * 3. Store the code in Redis with strict 120s TTL
+ * 4. On failure: log under [auth/sms-fail], publish failure event to Kafka DLQ
+ * 5. Verify codes with attempt-limited lockout
  *
  * Dev Mode (NODE_ENV=development OR MOCK_SMS=true):
  * - Bypasses MelliPayamak entirely
- * - Generates a local 5-digit code
  * - Prints high-visibility log: [DEV/SMS-MOCK] Generated Verification Token: <CODE> for Target: <MOBILE>
  *
- * API Reference: docs/mellipyamak/send-otp.md
- * Endpoint: POST https://console.melipayamak.com/api/send/otp/{token}
- * Payload: { "to": "09XXXXXXXXX" }
- * Response: { "code": "generated_code", "status": "error_description_if_any" }
+ * API Reference: docs/mellipyamak/send-pattern.md + webservice-SharedNumber.pdf
+ * Endpoint: POST https://console.melipayamak.com/api/send/shared/{token}
+ * Payload: { "bodyId": 455139, "to": "09XXXXXXXXX", "args": ["<code>"] }
+ * Response: { "recId": 3741437414, "status": "error_description_if_any" }
  */
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   private readonly melliPayamakToken: string;
+  private readonly otpBodyId: number;
   private readonly isMockMode: boolean;
 
   constructor(
@@ -68,7 +79,13 @@ export class OtpService {
     @Inject(ConfigService)
     private readonly configService: ConfigService,
   ) {
-    this.melliPayamakToken = this.configService.get<string>("MELIPAYAMAK_OTP_TOKEN", "");
+    // Shared-line access token; falls back to the legacy OTP token var name.
+    this.melliPayamakToken =
+      this.configService.get<string>("MELIPAYAMAK_SHARED_TOKEN", "") ||
+      this.configService.get<string>("MELIPAYAMAK_OTP_TOKEN", "");
+    this.otpBodyId = Number(
+      this.configService.get<string>("MELIPAYAMAK_OTP_BODY_ID", String(DEFAULT_OTP_BODY_ID)),
+    );
     const nodeEnv = this.configService.get<string>("NODE_ENV", "development");
     const mockSms = this.configService.get<string>("MOCK_SMS", "false");
     this.isMockMode = nodeEnv === "development" || mockSms === "true";
@@ -85,11 +102,11 @@ export class OtpService {
    */
   async dispatch(mobile: string): Promise<void> {
     try {
-      let code: string;
+      // Code is always generated locally; the pattern's {0} placeholder carries it.
+      const code = randomInt(10000, 99999).toString();
 
       if (this.isMockMode) {
-        // DEV MODE: Generate locally and print high-visibility log
-        code = randomInt(10000, 99999).toString();
+        // DEV MODE: Print high-visibility log instead of sending SMS
         this.logger.warn(
           `\n` +
             `╔══════════════════════════════════════════════════════════╗\n` +
@@ -98,8 +115,8 @@ export class OtpService {
             `╚══════════════════════════════════════════════════════════╝`,
         );
       } else {
-        // PRODUCTION: Call MelliPayamak Console OTP API
-        code = await this.callMelliPayamakOtp(mobile);
+        // PRODUCTION: Send via MelliPayamak shared-line pattern API
+        await this.sendPatternSms(mobile, code);
       }
 
       // Store code in Redis with strict 120s TTL
@@ -140,19 +157,25 @@ export class OtpService {
   }
 
   /**
-   * Call MelliPayamak Console OTP API.
+   * Send the OTP code via the MelliPayamak shared-line pattern API.
    *
-   * Endpoint: POST https://console.melipayamak.com/api/send/otp/{token}
-   * Body: { "to": "09XXXXXXXXX" }
-   * Response: { "code": "generated_code", "status": "..." }
+   * Endpoint: POST https://console.melipayamak.com/api/send/shared/{token}
+   * Body: { "bodyId": <approved pattern id>, "to": "09XXXXXXXXX", "args": ["<code>"] }
+   * Response: { "recId": 3741437414, "status": "error description if any" }
    *
-   * @returns The OTP code generated by MelliPayamak
+   * A successful send returns a positive numeric recId; failures surface a
+   * Persian error description in `status` (with recId null/0).
+   *
    * @throws Error on network failure, timeout, or non-success response
    */
-  private async callMelliPayamakOtp(mobile: string): Promise<string> {
-    const url = `https://console.melipayamak.com/api/send/otp/${this.melliPayamakToken}`;
+  private async sendPatternSms(mobile: string, code: string): Promise<void> {
+    const url = `https://console.melipayamak.com/api/send/shared/${this.melliPayamakToken}`;
 
-    const body = JSON.stringify({ to: mobile });
+    const body = JSON.stringify({
+      bodyId: this.otpBodyId,
+      to: mobile,
+      args: [code],
+    });
 
     const response = await fetch(url, {
       method: "POST",
@@ -170,17 +193,16 @@ export class OtpService {
       );
     }
 
-    const result = (await response.json()) as MelliPayamakOtpResponse;
+    const result = (await response.json()) as MelliPayamakPatternResponse;
 
-    // MelliPayamak returns the generated code in the "code" field.
-    // If "status" is non-empty, it indicates an error description.
-    if (!result.code) {
+    // A missing/zero recId means the pattern send was rejected.
+    if (!result.recId) {
       throw new Error(
-        `[auth/sms-fail] MelliPayamak returned empty code. Status: ${result.status || "unknown"}`,
+        `[auth/sms-fail] MelliPayamak pattern send rejected. Status: ${result.status || "unknown"}`,
       );
     }
 
-    return result.code;
+    this.logger.debug(`Pattern SMS queued (recId=${result.recId}) for ${mobile.slice(0, 4)}****`);
   }
 
   /**
